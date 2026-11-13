@@ -169,7 +169,7 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 @media(max-width:600px){.modal{align-items:flex-end;padding:0}.sheet{border-radius:16px 16px 0 0;max-width:none}}
 .sheet h3{font-size:16px;margin-bottom:14px}
 .fld{display:block;margin-bottom:12px;font-size:12.5px;color:var(--ink2)}
-.fld input[type=text],.fld select{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;font-size:15px;color:var(--ink)}
+.fld input[type=text],.fld input[type=date],.fld select{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;font-size:15px;color:var(--ink)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .swatches{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
 .sw{width:28px;height:28px;border-radius:8px;border:2px solid #fff;outline:1px solid var(--line);background:var(--c)}
@@ -231,6 +231,9 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .gbtn:hover{background:#fafaf8}
 .login-err{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:1em}
 .acct{cursor:pointer}
+.daterow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.daterow .fld{margin-bottom:0}
+.nodate{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px;margin-top:5px}
 .copybox{width:100%;min-height:160px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:8px}
 </style>
 </head>
@@ -453,6 +456,24 @@ function recFor(k){
   return recs().filter(r => r.days.includes(wd) && k >= r.from && (!r.until || k <= r.until) && !(r.skip || []).includes(k))
     .map(r => ({ id: "r:" + r.id, recId: r.id, taskId: null, title: r.title, projectId: r.projectId, start: r.start, dur: r.dur, done: !!rd[r.id] }));
 }
+const fullDate = k => { const d = parseKey(k); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; };
+const rangeText = r => r.until ? `${shortDate(r.from)}–${shortDate(r.until)}` : `${shortDate(r.from)} 起`;
+function dateFields(from, until){
+  return `<div class="daterow">
+    <label class="fld">開始日期<input type="date" id="mFrom" value="${from}"></label>
+    <label class="fld">結束日期<input type="date" id="mUntil" value="${until || ""}"${until ? "" : " disabled"}></label>
+  </div>
+  <label class="nodate"><input type="checkbox" id="mNoEnd" ${until ? "" : "checked"}> 不設結束日期（一直重複）</label>`;
+}
+function bindDateFields(){
+  $("#mNoEnd").addEventListener("change", e => { const u = $("#mUntil"); u.disabled = e.target.checked; if (!e.target.checked && !u.value) u.value = addDays($("#mFrom").value || todayKey(), 7*16); });
+}
+function readDates(){
+  const from = $("#mFrom").value, until = $("#mNoEnd").checked ? null : ($("#mUntil").value || null);
+  if (!from) { toast("請選開始日期"); return null; }
+  if (until && until < from) { toast("結束日期不能早於開始日期"); return null; }
+  return { from, until };
+}
 const allBlocks = k => (days[k] ? days[k].blocks : []).concat(recFor(k));
 const wdText = ds => { const o = [1,2,3,4,5,6,0].filter(d => ds.includes(d)); return o.length === 7 ? "每天" : o.join() === "1,2,3,4,5" ? "平日" : o.length===2&&o.includes(0)&&o.includes(6) ? "週末" : "週" + o.map(d => WD[d]).join("、"); };
 
@@ -487,7 +508,7 @@ function renderRecs(){
   const el = $("#recList"); if (!loaded) { el.innerHTML = ""; return; }
   const today = todayKey(), act = recs().filter(r => !r.until || r.until >= today).sort((a,b) => a.start - b.start);
   el.innerHTML = `<div class="recs"><div class="recs-h"><b>↻ 固定行程</b><button class="btn ghost sm" id="addRec">＋ 新增</button></div>
-    ${act.length ? act.map(r => `<div class="rec" data-rid="${r.id}" style="--c:${colorOf(r.projectId)}"><span class="dot"></span><span class="t">${esc(r.title)}<small>${wdText(r.days)} ${fmt(r.start)}–${fmt(r.start+r.dur)}</small></span><span class="ico">⋯</span></div>`).join("")
+    ${act.length ? act.map(r => `<div class="rec" data-rid="${r.id}" style="--c:${colorOf(r.projectId)}"><span class="dot"></span><span class="t">${esc(r.title)}<small>${wdText(r.days)} ${fmt(r.start)}–${fmt(r.start+r.dur)} · ${rangeText(r)}</small></span><span class="ico">⋯</span></div>`).join("")
       : `<div class="empty" style="padding:8px 0;text-align:left">上課、固定會議、運動…設定一次，每週自動出現在時間軸。</div>`}</div>`;
   $("#addRec").onclick = newRecurring;
   el.querySelectorAll(".rec").forEach(x => x.onclick = () => editRecurring(rec(x.dataset.rid), todayKey(), true));
@@ -895,7 +916,7 @@ function editRecurring(r, k, seriesOnly){
     <label class="fld">名稱<input type="text" id="mTitle" value="${esc(r.title)}" maxlength="80"></label>
     <label class="fld">專案<select id="mProj">${projOptions(r.projectId)}</select></label>
     ${timeFields(r.start, r.dur)}
-    <div class="fld">每週重複${wdPicker(r.days)}</div>
+    <div class="fld">每週重複${wdPicker(r.days)}${dateFields(r.from, r.until)}</div>
     ${occ ? `<label class="fld" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mDone" ${occ.done?"checked":""}> 這次已完成</label>` : ""}
     <div class="choice">
       ${occ ? `<button class="btn ghost" id="mOnce">只改這一次</button>` : ""}
@@ -905,7 +926,7 @@ function editRecurring(r, k, seriesOnly){
       <span style="display:flex;gap:8px">${occ ? `<button class="btn danger sm" id="mSkip">這次取消</button>` : ""}<button class="btn danger sm" id="mEnd">刪除</button></span>
       <button class="btn ghost sm" id="mCancel">關閉</button>
     </div>`);
-  bindWdPicker();
+  bindWdPicker(); bindDateFields();
   $("#mCancel").onclick = closeModal;
   const vals = () => ({ title: $("#mTitle").value.trim() || r.title, projectId: $("#mProj").value || null, start: +$("#mStart").value, dur: Math.min(+$("#mDur").value, END - +$("#mStart").value) });
   if (occ) {
@@ -913,23 +934,32 @@ function editRecurring(r, k, seriesOnly){
     $("#mSkip").onclick = () => { r.skip = (r.skip || []).concat(k); saveMain(); closeModal(); renderDay(); toast("這次已取消，其他週照常"); };
   }
   $("#mSeries").onclick = () => {
-    const v = vals(), ds = pickedDays();
+    const v = vals(), ds = pickedDays(), dt = readDates();
     if (!ds.length) { toast("至少選一個星期"); return; }
-    const from = seriesOnly ? todayKey() : k;
+    if (!dt) return;
+    const at = seriesOnly ? todayKey() : k;
     if (occ) { const d = days[k]; d.rdone = Object.assign({}, d.rdone, { [r.id]: $("#mDone").checked }); saveDay(k); }
-    if (r.from >= mondayOf(from)) Object.assign(r, v, { days: ds });           // series hasn't really started: edit in place
-    else {                                                                     // keep past weeks as they were, start a new series
-      r.until = addDays(mondayOf(from), -1);
-      const nr = Object.assign({ id: uid(), from: mondayOf(from), skip: (r.skip||[]).filter(x => x >= mondayOf(from)) }, v, { days: ds });
-      recs().push(nr);
-      if (occ && days[k].rdone && days[k].rdone[r.id] != null) { const d = days[k]; d.rdone = Object.assign({}, d.rdone, { [nr.id]: d.rdone[r.id] }); saveDay(k); }
+    const changed = v.title !== r.title || v.projectId !== r.projectId || v.start !== r.start || v.dur !== r.dur || ds.join() !== r.days.join();
+    if (!changed || r.from >= at || dt.from >= at) {
+      // only the dates changed, or the series hasn't started yet: edit in place
+      Object.assign(r, v, { days: ds, from: dt.from, until: dt.until });
+    } else {
+      // keep past weeks as they were, new settings apply from this date on
+      r.until = addDays(at, -1);
+      if (dt.until && dt.until < at) r.until = dt.until;
+      else {
+        const nr = Object.assign({ id: uid(), skip: (r.skip||[]).filter(x => x >= at) }, v, { days: ds, from: at, until: dt.until });
+        recs().push(nr);
+        if (occ) { const d = days[k]; d.rdone = Object.assign({}, d.rdone, { [nr.id]: $("#mDone").checked }); saveDay(k); }
+      }
     }
-    saveMain(); closeModal(); renderDay(); renderTodo(); toast("固定行程已更新");
+    saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth();
+    toast(dt.until ? `固定行程已更新（到 ${fullDate(dt.until)}）` : "固定行程已更新");
   };
   confirmBtn($("#mEnd"), "再按一次刪除整個系列", () => {
-    const cut = addDays(mondayOf(seriesOnly ? todayKey() : k), -1);
+    const cut = addDays(seriesOnly ? todayKey() : k, -1);
     if (cut < r.from) S.recurring = recs().filter(x => x.id !== r.id); else r.until = cut;
-    saveMain(); closeModal(); renderDay(); renderTodo(); toast("已刪除，過去的週統整會保留");
+    saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); toast("已刪除，過去的週統整會保留");
   });
 }
 function editBlock(b, isNew, preDays){
@@ -939,22 +969,27 @@ function editBlock(b, isNew, preDays){
     <label class="fld">名稱<input type="text" id="mTitle" value="${esc(b.title)}" maxlength="80"></label>
     <label class="fld">專案<select id="mProj">${projOptions(b.projectId)}</select></label>
     ${timeFields(b.start, b.dur)}
-    ${t ? "" : `<div class="fld">每週重複（上課、固定會議等）${wdPicker(preDays || [])}</div>`}
+    ${t ? "" : `<div class="fld">每週重複（上課、固定會議等）${wdPicker(preDays || [])}<div id="mRange" class="${preDays ? "" : "hidden"}">${dateFields(k, null)}</div></div>`}
     ${t ? `<p class="fld">連結待辦：${esc(t.title)}（完成方塊會同步勾選）</p>` : ""}
     <label class="fld" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mDone" ${b.done?"checked":""}> 已完成</label>
     <div class="acts">${isNew ? "<span></span>" : `<button class="btn danger" id="mDel">刪除</button>`}<span style="display:flex;gap:8px"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mSave">儲存</button></span></div>`);
   if (isNew) $("#mTitle").select();
-  if (!t) bindWdPicker();
+  if (!t) {
+    bindWdPicker(); bindDateFields();
+    const showRange = () => $("#mRange").classList.toggle("hidden", !preDays && !pickedDays().length);
+    $("#mWds").addEventListener("click", () => setTimeout(showRange));
+    $("#mWds").nextElementSibling.addEventListener("click", () => setTimeout(showRange));
+  }
   $("#mCancel").onclick = closeModal;
   if (!isNew) confirmBtn($("#mDel"), "再按一次刪除", () => { days[k].blocks = days[k].blocks.filter(x => x.id !== b.id); saveDay(k); closeModal(); renderDay(); renderTodo(); });
   $("#mSave").onclick = () => {
     const ds = t ? [] : pickedDays();
     if (preDays && !ds.length) { toast("請選擇每週哪幾天"); return; }
     if (ds.length) {
-      const st = +$("#mStart").value;
-      recs().push({ id: uid(), title: $("#mTitle").value.trim() || "固定行程", projectId: $("#mProj").value || null, start: st, dur: Math.min(+$("#mDur").value, END - st), days: ds, from: mondayOf(k), skip: [] });
+      const st = +$("#mStart").value, dt = readDates(); if (!dt) return;
+      recs().push({ id: uid(), title: $("#mTitle").value.trim() || "固定行程", projectId: $("#mProj").value || null, start: st, dur: Math.min(+$("#mDur").value, END - st), days: ds, from: dt.from, until: dt.until, skip: [] });
       if (!isNew) { days[k].blocks = days[k].blocks.filter(x => x.id !== b.id); saveDay(k); }
-      saveMain(); closeModal(); renderDay(); renderTodo(); toast(`已設為${wdText(ds)}固定行程`);
+      saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); toast(`已設為${wdText(ds)}固定行程（${fullDate(dt.from)} 起）`);
       return;
     }
     b.title = $("#mTitle").value.trim() || "未命名方塊";
