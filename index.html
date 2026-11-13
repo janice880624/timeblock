@@ -169,7 +169,7 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 @media(max-width:600px){.modal{align-items:flex-end;padding:0}.sheet{border-radius:16px 16px 0 0;max-width:none}}
 .sheet h3{font-size:16px;margin-bottom:14px}
 .fld{display:block;margin-bottom:12px;font-size:12.5px;color:var(--ink2)}
-.fld input[type=text],.fld input[type=date],.fld select{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;font-size:15px;color:var(--ink)}
+.fld input[type=text],.fld input[type=date],.fld input[type=time],.fld select{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;font-size:15px;color:var(--ink)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .swatches{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
 .sw{width:28px;height:28px;border-radius:8px;border:2px solid #fff;outline:1px solid var(--line);background:var(--c)}
@@ -234,6 +234,10 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .daterow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .daterow .fld{margin-bottom:0}
 .nodate{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px;margin-top:5px}
+.durin{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:13px;color:var(--ink2)}
+.durin input{width:58px;border:1px solid var(--line);border-radius:10px;padding:9px 6px;background:#fff;font-size:15px;color:var(--ink);text-align:center}
+.durq{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.durq button{border:none;background:var(--line2);border-radius:7px;padding:3px 8px;font-size:12px;color:var(--ink2)}
 .copybox{width:100%;min-height:160px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:8px}
 </style>
 </head>
@@ -896,16 +900,32 @@ function bindWdPicker(){
   box.nextElementSibling.addEventListener("click", e => { const q = e.target.closest("[data-q]"); if (!q) return; const set = q.dataset.q ? q.dataset.q.split(",").map(Number) : []; box.querySelectorAll(".wd").forEach(w => w.classList.toggle("on", set.includes(+w.dataset.d))); });
 }
 const pickedDays = () => [...document.querySelectorAll("#mWds .wd.on")].map(w => +w.dataset.d);
+function durInputs(id, mins){
+  const h = Math.floor(mins/60), m = mins % 60;
+  return `<div class="durin"><input type="number" id="${id}H" min="0" max="18" value="${h}" inputmode="numeric" aria-label="小時"> 小時 <input type="number" id="${id}M" min="0" max="59" step="5" value="${m}" inputmode="numeric" aria-label="分鐘"> 分</div>
+    <div class="durq" data-for="${id}">${[15,30,45,60,90,120,180].map(x => `<button type="button" data-m="${x}">${hm(x)}</button>`).join("")}</div>`;
+}
+function readDurOf(id){
+  const h = parseInt($("#"+id+"H").value, 10) || 0, m = parseInt($("#"+id+"M").value, 10) || 0;
+  return clamp(h*60 + m, 5, 18*60);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".durq button"); if (!b) return;
+  const id = b.parentElement.dataset.for, x = +b.dataset.m;
+  $("#"+id+"H").value = Math.floor(x/60); $("#"+id+"M").value = x % 60;
+});
 function timeFields(start, dur){
-  const times = []; for (let m = START; m < END; m += 5) times.push(m);
-  const durs = []; for (let m = 15; m <= 360; m += 15) durs.push(m);
-  if (!times.includes(start)) times.push(start), times.sort((a,b)=>a-b);
-  if (!durs.includes(dur)) durs.push(dur), durs.sort((a,b)=>a-b);
   return `<div class="two">
-      <label class="fld">開始<select id="mStart">${times.map(m => `<option value="${m}" ${m===start?"selected":""}>${fmt(m)}</option>`).join("")}</select></label>
-      <label class="fld">長度<select id="mDur">${durs.map(m => `<option value="${m}" ${m===dur?"selected":""}>${hm(m)}</option>`).join("")}</select></label>
+      <label class="fld">開始<input type="time" id="mStart" value="${fmt(start)}" min="06:00" max="23:55" step="300"></label>
+      <div class="fld">長度${durInputs("mDur", dur)}</div>
     </div>`;
 }
+function readStart(){
+  const v = ($("#mStart").value || "").split(":").map(Number);
+  if (v.length < 2 || isNaN(v[0]) || isNaN(v[1])) return 9*60;
+  return clamp(v[0]*60 + v[1], START, END - 5);
+}
+const readDur = () => readDurOf("mDur");
 function newRecurring(){
   const b = { id: uid(), taskId: null, projectId: null, title: "", start: 9*60, dur: 120, done: false };
   editBlock(b, true, []);
@@ -928,7 +948,7 @@ function editRecurring(r, k, seriesOnly){
     </div>`);
   bindWdPicker(); bindDateFields();
   $("#mCancel").onclick = closeModal;
-  const vals = () => ({ title: $("#mTitle").value.trim() || r.title, projectId: $("#mProj").value || null, start: +$("#mStart").value, dur: Math.min(+$("#mDur").value, END - +$("#mStart").value) });
+  const vals = () => ({ title: $("#mTitle").value.trim() || r.title, projectId: $("#mProj").value || null, start: readStart(), dur: Math.min(readDur(), END - readStart()) });
   if (occ) {
     $("#mOnce").onclick = () => { detachOccurrence(k, occ, Object.assign(vals(), { done: $("#mDone").checked })); closeModal(); renderDay(); };
     $("#mSkip").onclick = () => { r.skip = (r.skip || []).concat(k); saveMain(); closeModal(); renderDay(); toast("這次已取消，其他週照常"); };
@@ -986,15 +1006,15 @@ function editBlock(b, isNew, preDays){
     const ds = t ? [] : pickedDays();
     if (preDays && !ds.length) { toast("請選擇每週哪幾天"); return; }
     if (ds.length) {
-      const st = +$("#mStart").value, dt = readDates(); if (!dt) return;
-      recs().push({ id: uid(), title: $("#mTitle").value.trim() || "固定行程", projectId: $("#mProj").value || null, start: st, dur: Math.min(+$("#mDur").value, END - st), days: ds, from: dt.from, until: dt.until, skip: [] });
+      const st = readStart(), dt = readDates(); if (!dt) return;
+      recs().push({ id: uid(), title: $("#mTitle").value.trim() || "固定行程", projectId: $("#mProj").value || null, start: st, dur: Math.min(readDur(), END - st), days: ds, from: dt.from, until: dt.until, skip: [] });
       if (!isNew) { days[k].blocks = days[k].blocks.filter(x => x.id !== b.id); saveDay(k); }
       saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); toast(`已設為${wdText(ds)}固定行程（${fullDate(dt.from)} 起）`);
       return;
     }
     b.title = $("#mTitle").value.trim() || "未命名方塊";
     b.projectId = $("#mProj").value || null;
-    b.start = +$("#mStart").value; b.dur = Math.min(+$("#mDur").value, END - b.start);
+    b.start = readStart(); b.dur = Math.min(readDur(), END - b.start);
     const wasDone = b.done; b.done = $("#mDone").checked;
     if (isNew) days[k].blocks.push(b);
     saveDay(k); closeModal();
@@ -1008,14 +1028,14 @@ function editTask(id){
     <label class="fld">名稱<input type="text" id="mTitle" value="${esc(t.title)}" maxlength="80"></label>
     <div class="two">
       <label class="fld">專案<select id="mProj">${S.projects.map(p => `<option value="${p.id}" ${p.id===t.projectId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></label>
-      <label class="fld">預估時間<select id="mEst">${estOptions(t.est||30)}</select></label>
+      <div class="fld">預估時間${durInputs("mEst", t.est||30)}</div>
     </div>
     ${subs.length ? `<p class="fld">底下有 ${subs.length} 個小事項，刪除時會一起刪除。</p>` : ""}
     <div class="acts"><button class="btn danger" id="mDel">刪除</button><span style="display:flex;gap:8px"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mSave">儲存</button></span></div>`);
   $("#mCancel").onclick = closeModal;
   confirmBtn($("#mDel"), "再按一次刪除", () => { S.tasks = S.tasks.filter(x => x.id !== id && x.parentId !== id); saveMain(); closeModal(); renderTodo(); renderTray(); });
   $("#mSave").onclick = () => {
-    t.title = $("#mTitle").value.trim() || t.title; t.est = +$("#mEst").value;
+    t.title = $("#mTitle").value.trim() || t.title; t.est = readDurOf("mEst");
     const np = $("#mProj").value;
     if (np !== t.projectId) { t.projectId = np; subs.forEach(s => s.projectId = np); }
     saveMain(); closeModal(); renderTodo(); renderTray();
