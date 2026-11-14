@@ -271,11 +271,23 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .madd input[type=text]{border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;background:#fff}
 .madd select,.madd input[type=date],.mfil select{border:1px solid var(--line);border-radius:9px;padding:6px 8px;background:#fff;font-size:13px;min-width:0;-webkit-appearance:none;appearance:none;height:34px}
 .mfil{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center;font-size:12.5px;color:var(--ink2)}
-.mgroup{margin-bottom:12px}
+.mgroups{columns:3 290px;column-gap:12px}
+.mgroup{margin-bottom:12px;break-inside:avoid;-webkit-column-break-inside:avoid;display:inline-block;width:100%}
+.mgroup .mlist{box-shadow:none}
+@media(min-width:760px){
+  .madd{grid-template-columns:minmax(0,1fr) auto auto auto auto;align-items:center}
+  .madd .opts{display:contents}
+  .madd .btn{order:9}
+}
+@media(min-width:1100px){
+  .mtop2{display:flex;gap:12px;align-items:flex-start}
+  .mtop2 .mstats{flex:none;margin-bottom:10px}
+  .mtop2 .madd{flex:1;min-width:0}
+}
 .mgroup h4{font-size:12.5px;color:var(--ink2);margin:0 0 6px 2px;font-weight:700;display:flex;gap:6px;align-items:center}
 .mgroup h4.over{color:#d63c3b}.mgroup h4.today{color:#eb6834}
 .mlist{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.mrow{display:flex;align-items:flex-start;gap:9px;padding:9px 10px 9px 8px;border-top:1px solid var(--line2);border-left:3px solid transparent}
+.mrow{display:flex;align-items:flex-start;gap:8px;padding:8px 8px 8px 7px;border-top:1px solid var(--line2);border-left:3px solid transparent}
 .mrow:first-child{border-top:none}
 .mrow.over{border-left-color:#d63c3b;background:#fff7f6}
 .mrow.today{border-left-color:#eb6834;background:#fffaf6}
@@ -283,7 +295,7 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .mrow.near{border-left-color:#eda100}
 .mrow input[type=checkbox]{width:18px;height:18px;margin:2px 0 0;accent-color:var(--c);flex:none}
 .mmain{flex:1;min-width:0}
-.mt1{display:flex;gap:6px;align-items:center;font-size:14.5px}
+.mt1{display:flex;gap:6px;align-items:center;font-size:14px;line-height:1.35}
 .mt1 .t{cursor:pointer;word-break:break-word}
 .mrow.done .mt1 .t{text-decoration:line-through;color:var(--muted)}
 .mt2{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:3px}
@@ -1265,7 +1277,7 @@ function renderMaster(){
     </li>`; };
   el.innerHTML = `
     <div class="panel-head"><h2>待辦總覽</h2><span style="font-size:12.5px;color:var(--muted)">未完成 ${open.length} 項</span></div>
-    <div class="mstats">
+    <div class="mtop2"><div class="mstats">
       <div class="mstat over"><b>${over}</b>已逾期</div><div class="mstat today"><b>${today}</b>今天截止</div>
       <div class="mstat near"><b>${near}</b>3 天內</div><div class="mstat"><b>${high}</b>高優先</div>
     </div>
@@ -1277,7 +1289,7 @@ function renderMaster(){
         <select id="maPri" aria-label="優先度">${["h","m","l"].map(p => `<option value="${p}" ${p === (ui.maPri || "m") ? "selected" : ""}>${PRI[p].t}優先</option>`).join("")}</select>
         <input type="date" id="maDue" aria-label="截止日期" title="截止日期（可不填）">
       </div>
-    </form>
+    </form></div>
     <div class="mfil">
       <select data-f="status"><option value="open">未完成</option><option value="all">全部</option><option value="done">已完成</option></select>
       <select data-f="pri"><option value="all">所有優先度</option><option value="h">高</option><option value="m">中</option><option value="l">低</option></select>
@@ -1285,7 +1297,7 @@ function renderMaster(){
       <span style="margin-left:auto">排序</span>
       <select data-f="sort"><option value="due">截止日</option><option value="pri">優先度</option><option value="proj">專案</option><option value="created">最新加入</option></select>
     </div>
-    ${groups.length ? groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("")
+    ${groups.length ? `<div class="mgroups">` + groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("") + `</div>`
       : `<div class="empty">${S.tasks.length ? "沒有符合篩選的待辦" : "還沒有待辦，從上面新增第一個吧"}</div>`}`;
   el.querySelectorAll(".mfil select").forEach(sel => { if (sel.dataset.f === "proj" && !proj(f.proj)) f.proj = "all"; sel.value = f[sel.dataset.f]; });
 }
