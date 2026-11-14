@@ -41,7 +41,7 @@ button{cursor:pointer}
 
 main{padding:0 18px 40px}
 .panel{display:none}
-main.view-todo #todoPanel, main.view-day #dayPanel, main.view-week #weekPanel, main.view-month #monthPanel, main.view-all #allPanel{display:block}
+main.view-todo #todoPanel, main.view-day #dayPanel, main.view-week #weekPanel, main.view-month #monthPanel, main.view-all #allPanel, main.view-habit #habitPanel{display:block}
 @media(min-width:900px){
   .tabs button[data-view="todo"]{display:none}
   main.view-day{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:18px;align-items:start}
@@ -302,6 +302,33 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .mt2 .pj{display:flex;align-items:center;gap:4px}
 .mdue{font-size:10.5px;color:#d63c3b;font-weight:700}
 .chip .cd{font-size:11px;color:#a63d0f;margin-left:4px}
+.htable-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow-x:auto}
+.htable{border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px}
+.htable th,.htable td{padding:5px 2px;text-align:center;border-bottom:1px solid var(--line2);white-space:nowrap}
+.htable tr:last-child td{border-bottom:none}
+.htable thead th{font-weight:500;color:var(--muted);font-size:11px;line-height:1.25;position:sticky;top:0;background:var(--card)}
+.htable thead th b{display:block;color:var(--ink2);font-size:12px}
+.htable thead th.today b{color:#fff;background:var(--accent);border-radius:50%;width:20px;height:20px;line-height:20px;margin:1px auto 0}
+.htable .wk{border-left:1px solid var(--line)}
+.htable .nm{position:sticky;left:0;background:var(--card);z-index:1;text-align:left;padding:7px 8px 7px 10px;min-width:120px;max-width:170px;white-space:normal;cursor:pointer;border-right:1px solid var(--line)}
+.htable .nm b{display:flex;gap:6px;align-items:center;font-size:13.5px;font-weight:500;color:var(--ink)}
+.htable .nm small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+.htable tr.ended .nm b{color:var(--muted)}
+.htable .st{padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;border-left:1px solid var(--line)}
+.htable .st b{font-size:14px}
+.htable .st small{display:block;color:var(--muted);font-size:11px}
+.hc{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;font-size:12px;font-style:normal;border:none;padding:0;background:transparent;color:transparent;vertical-align:middle}
+button.hc{cursor:pointer}
+.hc.done{background:var(--c);color:#fff;font-weight:700}
+.hc.miss{background:#f6e4e3;color:#c9413f}
+.hc.todo{border:2px dashed var(--c);background:#fff}
+.hc.future{border:1.5px solid color-mix(in srgb,var(--c) 40%,#fff);background:#fff}
+.hc.skip{color:var(--muted);background:var(--line2)}
+.hc.none::after{content:"";width:3px;height:3px;border-radius:50%;background:#dddbd4}
+@media(max-width:640px){.htable .nm{min-width:96px;max-width:118px;padding-left:8px}.htable .st{padding:5px 6px}.hc{width:22px;height:22px}#habitPanel .kpi b{font-size:20px}}
+.hlegend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:10px 2px 0}
+.hlegend span{display:flex;align-items:center;gap:5px}
+.hlegend .hc{width:18px;height:18px;font-size:10px;border-radius:5px}
 .copybox{width:100%;min-height:160px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:8px}
 </style>
 </head>
@@ -315,6 +342,7 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
   <button data-view="all">待辦總覽</button>
   <button data-view="day">每日規劃</button>
   <button data-view="month">月曆</button>
+  <button data-view="habit">固定行程</button>
   <button data-view="week">週統整</button>
 </nav>
 <main id="app" class="view-day">
@@ -340,6 +368,23 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
   </section>
 
   <section id="allPanel" class="panel"></section>
+
+  <section id="habitPanel" class="panel">
+    <div class="day-head">
+      <button class="nav" id="prevHabit" aria-label="往前">‹</button>
+      <div class="dlabel"><b id="hTitle"></b><small id="hSub"></small></div>
+      <button class="nav" id="nextHabit" aria-label="往後">›</button>
+      <button class="pill" id="thisHabitBtn">本週</button>
+    </div>
+    <div class="kpis" id="hKpis"></div>
+    <div class="htable-wrap" id="hTable"></div>
+    <div class="hlegend">
+      <span><i class="hc done" style="--c:#6b6a63">✓</i>完成</span><span><i class="hc miss">✕</i>沒做到</span>
+      <span><i class="hc todo" style="--c:#6b6a63"></i>今天待完成</span><span><i class="hc future" style="--c:#6b6a63"></i>還沒到</span>
+      <span><i class="hc skip">–</i>取消</span>
+    </div>
+    <p class="hint">點格子可以勾選或取消完成（未來的日子不能勾）。點左邊名稱可以編輯固定行程。</p>
+  </section>
 
   <section id="monthPanel" class="panel">
     <div class="day-head">
@@ -570,7 +615,7 @@ function setView(v){
   ui.view = v; saveUI();
   $("#app").className = "view-" + v;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
-  if (v === "week") renderWeek(); else if (v === "month") renderMonth(); else if (v === "all") renderMaster(); else if (v === "day") renderDay(); else renderTodo();
+  if (v === "week") renderWeek(); else if (v === "month") renderMonth(); else if (v === "all") renderMaster(); else if (v === "habit") renderHabit(); else if (v === "day") renderDay(); else renderTodo();
   if (v === "day" && isDesk()) renderTodo();
 }
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setView(b.dataset.view); });
@@ -1072,13 +1117,13 @@ function editRecurring(r, k, seriesOnly){
         if (occ) { const d = days[k]; d.rdone = Object.assign({}, d.rdone, { [nr.id]: $("#mDone").checked }); saveDay(k); }
       }
     }
-    saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth();
+    saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit();
     toast(dt.until ? `固定行程已更新（到 ${fullDate(dt.until)}）` : "固定行程已更新");
   };
   confirmBtn($("#mEnd"), "再按一次刪除整個系列", () => {
     const cut = addDays(seriesOnly ? todayKey() : k, -1);
     if (cut < r.from) S.recurring = recs().filter(x => x.id !== r.id); else r.until = cut;
-    saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); toast("已刪除，過去的週統整會保留");
+    saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit(); toast("已刪除，過去的週統整會保留");
   });
 }
 function editBlock(b, isNew, preDays){
@@ -1323,6 +1368,84 @@ $("#allPanel").addEventListener("click", e => {
   if (a.dataset.act === "check") setTaskDone(t, a.checked);
   else if (a.dataset.act === "editTask") editTask(t.id);
   else if (a.dataset.act === "sched") quickSchedule(t);
+});
+
+/* ---------- HABIT (recurring overview) ---------- */
+ui.hAnchor = mondayOf(todayKey());
+const hWeeks = () => matchMedia("(max-width:640px)").matches ? 1 : matchMedia("(max-width:1000px)").matches ? 2 : 4;
+$("#prevHabit").onclick = () => { ui.hAnchor = addDays(ui.hAnchor, -7 * hWeeks()); renderHabit(); };
+$("#nextHabit").onclick = () => { ui.hAnchor = addDays(ui.hAnchor, 7 * hWeeks()); renderHabit(); };
+$("#thisHabitBtn").onclick = () => { ui.hAnchor = mondayOf(todayKey()); renderHabit(); };
+function occState(r, k, today){
+  const wd = parseKey(k).getDay();
+  if (!r.days.includes(wd) || k < r.from || (r.until && k > r.until)) return "none";
+  if ((r.skip || []).includes(k)) return "skip";
+  if (k > today) return "future";
+  const done = !!((days[k] && days[k].rdone) || {})[r.id];
+  if (done) return "done";
+  return k === today ? "todo" : "miss";
+}
+async function renderHabit(){
+  const n = hWeeks(), first = addDays(ui.hAnchor, -7 * (n - 1)), keys = [...Array(n * 7)].map((_, i) => addDays(first, i));
+  const last = keys[keys.length - 1], today = todayKey();
+  $("#hTitle").textContent = `${shortDate(first)} – ${shortDate(last)}`;
+  $("#hSub").textContent = n === 1 ? "一週" : `${n} 週`;
+  const draw = () => {
+    if (ui.view !== "habit") return;
+    const items = recs().filter(r => r.from <= last && (!r.until || r.until >= first))
+      .sort((a, b) => ((a.until && a.until < today) - (b.until && b.until < today)) || a.start - b.start);
+    if (!items.length) {
+      $("#hKpis").innerHTML = "";
+      $("#hTable").innerHTML = `<div class="empty">這段期間沒有固定行程。<br>到「專案」頁的「↻ 固定行程」新增上課、運動等每週固定的事。</div>`;
+      return;
+    }
+    let tDone = 0, tSched = 0, tMiss = 0, tMin = 0;
+    const head = keys.map(k => { const d = parseKey(k); return `<th class="${d.getDay() === 1 ? "wk" : ""} ${k === today ? "today" : ""}">${WD[d.getDay()]}<b>${d.getDate()}</b></th>`; }).join("");
+    const rows = items.map(r => {
+      let dn = 0, sc = 0;
+      const cells = keys.map(k => {
+        const st = occState(r, k, today), wk = parseKey(k).getDay() === 1 ? "wk" : "";
+        if (st === "done" || st === "miss" || st === "todo") { sc++; if (st === "done") { dn++; tMin += r.dur; } if (st === "miss") tMiss++; }
+        const lbl = { done: "✓", miss: "✕", skip: "–" }[st] || "";
+        const btn = st === "done" || st === "miss" || st === "todo";
+        return `<td class="${wk}">${btn ? `<button class="hc ${st}" data-r="${r.id}" data-k="${k}" title="${shortDate(k)} ${esc(r.title)}" aria-label="${shortDate(k)} ${st === "done" ? "已完成" : "未完成"}">${lbl}</button>` : `<i class="hc ${st}" title="${st === "skip" ? "這次取消" : ""}">${lbl}</i>`}</td>`;
+      }).join("");
+      tDone += dn; tSched += sc;
+      const ended = r.until && r.until < today;
+      return `<tr class="${ended ? "ended" : ""}" style="--c:${colorOf(r.projectId)}">
+        <th class="nm" data-rid="${r.id}"><b><span class="dot"></span>${esc(r.title)}</b><small>${wdText(r.days)} ${fmt(r.start)}${ended ? " · 已結束" : ""}</small></th>
+        ${cells}
+        <td class="st">${sc ? `<b>${Math.round(dn / sc * 100)}%</b><small>${dn}/${sc} 次</small>` : `<small>—</small>`}</td>
+      </tr>`;
+    }).join("");
+    $("#hTable").innerHTML = `<table class="htable"><thead><tr><th class="nm" style="cursor:default">固定行程</th>${head}<th class="st">完成率</th></tr></thead><tbody>${rows}</tbody></table>`;
+    $("#hKpis").innerHTML = `
+      <div class="kpi"><small>完成率</small><b>${tSched ? Math.round(tDone / tSched * 100) : 0}<em>%</em></b><em>到今天為止</em></div>
+      <div class="kpi"><small>完成</small><b>${tDone}<em> 次</em></b><em>共 ${tSched} 次</em></div>
+      <div class="kpi"><small>沒做到</small><b>${tMiss}<em> 次</em></b><em>不含取消的</em></div>
+      <div class="kpi"><small>完成時數</small><b>${hrs(tMin)}<em> 小時</em></b><em>固定行程累計</em></div>`;
+    const tw = $("#hTable"), tc = tw.querySelector("th.today");
+    if (tc && n > 1 && !tw.dataset.scrolled) { tw.scrollLeft = Math.max(0, tc.offsetLeft - tw.clientWidth + 120); tw.dataset.scrolled = 1; }
+  };
+  $("#hTable").dataset.scrolled = "";
+  draw();
+  if (!loaded) return;
+  const missing = keys.filter(k => !days[k] && k <= today);
+  for (let i = 0; i < missing.length; i += 7) {
+    await Promise.all(missing.slice(i, i + 7).map(loadDay));
+    if (ui.view !== "habit") return;
+    draw();
+  }
+}
+$("#hTable").addEventListener("click", async e => {
+  const nm = e.target.closest(".nm[data-rid]");
+  if (nm) { const r = rec(nm.dataset.rid); if (r) editRecurring(r, todayKey(), true); return; }
+  const c = e.target.closest("button.hc"); if (!c) return;
+  const k = c.dataset.k, rid = c.dataset.r;
+  const d = await loadDay(k); if (!d) { toast("讀取失敗，稍後再試"); return; }
+  const now = !(d.rdone || {})[rid];
+  d.rdone = Object.assign({}, d.rdone, { [rid]: now }); saveDay(k);
+  renderHabit();
 });
 
 /* ---------- MONTH panel ---------- */
