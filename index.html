@@ -33,13 +33,15 @@ button{cursor:pointer}
 .acct i{width:8px;height:8px;border-radius:50%;background:#bbb;flex:none}
 .acct.on i{background:#1baf7a}
 
-.tabs{display:flex;gap:6px;padding:4px 18px 10px}
+.tabs{display:flex;gap:6px;padding:4px 18px 10px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none}
 .tabs button{border:1px solid var(--line);background:var(--card);padding:7px 14px;border-radius:999px;font-weight:500;color:var(--ink2)}
 .tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 
 main{padding:0 18px 40px}
 .panel{display:none}
-main.view-todo #todoPanel, main.view-day #dayPanel, main.view-week #weekPanel, main.view-month #monthPanel{display:block}
+main.view-todo #todoPanel, main.view-day #dayPanel, main.view-week #weekPanel, main.view-month #monthPanel, main.view-all #allPanel{display:block}
 @media(min-width:900px){
   .tabs button[data-view="todo"]{display:none}
   main.view-day{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:18px;align-items:start}
@@ -238,6 +240,56 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .durin input{width:58px;border:1px solid var(--line);border-radius:10px;padding:9px 6px;background:#fff;font-size:15px;color:var(--ink);text-align:center}
 .durq{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
 .durq button{border:none;background:var(--line2);border-radius:7px;padding:3px 8px;font-size:12px;color:var(--ink2)}
+.sheet .two,.daterow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+.fld{min-width:0}
+.fld input[type=date],.fld input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;height:42px;text-align:left;line-height:1.2}
+.fld input[type=date]::-webkit-date-and-time-value,.fld input[type=time]::-webkit-date-and-time-value{text-align:left}
+.durline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.durline .durq{margin-top:0}
+#mDurTxt{font-weight:500;color:var(--ink)}
+#mDurTxt.bad{color:var(--danger)}
+.seg{display:flex;gap:6px;margin-top:6px}
+.seg button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 0;font-size:14px}
+.seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.duerow{display:flex;gap:6px;align-items:center;margin-top:4px}
+.duerow input{flex:1;margin-top:0!important}
+.pri{font-size:11px;font-weight:700;border-radius:5px;padding:1px 5px;flex:none;line-height:1.4}
+.pri.p-h{background:var(--ink);color:#fff}
+.pri.p-m{background:var(--line2);color:var(--ink2)}
+.pri.p-l{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.due{font-size:11.5px;border-radius:6px;padding:1px 6px;flex:none;white-space:nowrap;background:var(--line2);color:var(--ink2)}
+.due.near{background:#fdf1d2;color:#8a5a00}
+.due.soon{background:#fde3d6;color:#a63d0f}
+.due.today{background:#eb6834;color:#fff}
+.due.over{background:#d63c3b;color:#fff}
+.mstats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.mstat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-size:12.5px;color:var(--ink2)}
+.mstat b{font-size:16px;color:var(--ink);margin-right:3px}
+.mstat.over b{color:#d63c3b}.mstat.today b{color:#eb6834}.mstat.near b{color:#8a5a00}
+.madd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px;margin-bottom:10px}
+.madd .opts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.madd input[type=text]{border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;background:#fff}
+.madd select,.madd input[type=date],.mfil select{border:1px solid var(--line);border-radius:9px;padding:6px 8px;background:#fff;font-size:13px;min-width:0;-webkit-appearance:none;appearance:none;height:34px}
+.mfil{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center;font-size:12.5px;color:var(--ink2)}
+.mgroup{margin-bottom:12px}
+.mgroup h4{font-size:12.5px;color:var(--ink2);margin:0 0 6px 2px;font-weight:700;display:flex;gap:6px;align-items:center}
+.mgroup h4.over{color:#d63c3b}.mgroup h4.today{color:#eb6834}
+.mlist{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.mrow{display:flex;align-items:flex-start;gap:9px;padding:9px 10px 9px 8px;border-top:1px solid var(--line2);border-left:3px solid transparent}
+.mrow:first-child{border-top:none}
+.mrow.over{border-left-color:#d63c3b;background:#fff7f6}
+.mrow.today{border-left-color:#eb6834;background:#fffaf6}
+.mrow.soon{border-left-color:#eb6834}
+.mrow.near{border-left-color:#eda100}
+.mrow input[type=checkbox]{width:18px;height:18px;margin:2px 0 0;accent-color:var(--c);flex:none}
+.mmain{flex:1;min-width:0}
+.mt1{display:flex;gap:6px;align-items:center;font-size:14.5px}
+.mt1 .t{cursor:pointer;word-break:break-word}
+.mrow.done .mt1 .t{text-decoration:line-through;color:var(--muted)}
+.mt2{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:3px}
+.mt2 .pj{display:flex;align-items:center;gap:4px}
+.mdue{font-size:10.5px;color:#d63c3b;font-weight:700}
+.chip .cd{font-size:11px;color:#a63d0f;margin-left:4px}
 .copybox{width:100%;min-height:160px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:8px}
 </style>
 </head>
@@ -247,7 +299,8 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
   <div class="acct" id="acct"><i></i><span>確認帳號中…</span></div>
 </header>
 <nav class="tabs" id="tabs">
-  <button data-view="todo">待辦</button>
+  <button data-view="todo">專案</button>
+  <button data-view="all">待辦總覽</button>
   <button data-view="day">每日規劃</button>
   <button data-view="month">月曆</button>
   <button data-view="week">週統整</button>
@@ -273,6 +326,8 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
     <div class="tl-scroll" id="tlScroll"><div class="tl-grid" id="tlGrid"></div></div>
     <p class="hint">把待辦拖到時間軸（手機：長按方塊再拖曳，或點一下自動排入）。點空白處新增方塊（可設成每週重複），拖曳方塊移動，拉底邊調整長度。↻ 是固定行程。</p>
   </section>
+
+  <section id="allPanel" class="panel"></section>
 
   <section id="monthPanel" class="panel">
     <div class="day-head">
@@ -432,7 +487,8 @@ const days = {}, weeks = {};
 const ui = Object.assign({ view: "day", hideDone: false, collapsed: {} }, lsGet("blk:ui") || {});
 ui.date = todayKey(); ui.weekStart = mondayOf(ui.date); ui.addingSub = null;
 let loaded = false;
-const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed });
+ui.mf = Object.assign({ status: "open", pri: "all", proj: "all", sort: "due" }, ui.mf || {});
+const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed, mf: ui.mf });
 const saveMain = () => Store.save("main", S);
 const saveDay = k => Store.save("day-" + k, days[k]);
 async function loadDay(k){
@@ -478,6 +534,20 @@ function readDates(){
   if (until && until < from) { toast("結束日期不能早於開始日期"); return null; }
   return { from, until };
 }
+const PRI = { h: { t: "高", o: 0 }, m: { t: "中", o: 1 }, l: { t: "低", o: 2 } };
+const priOf = t => PRI[t.priority] ? t.priority : "m";
+function dueInfo(t){
+  if (!t.due) return null;
+  const diff = Math.round((parseKey(t.due) - parseKey(todayKey()))/864e5);
+  if (t.done) return { cls: "", label: `${shortDate(t.due)} 截止`, diff };
+  if (diff < 0) return { cls: "over", label: `逾期 ${-diff} 天`, diff };
+  if (diff === 0) return { cls: "today", label: "今天截止", diff };
+  if (diff === 1) return { cls: "soon", label: "明天截止", diff };
+  if (diff <= 3) return { cls: "near", label: `${diff} 天後截止`, diff };
+  return { cls: "", label: `${shortDate(t.due)} 截止`, diff };
+}
+const dueBadge = t => { const d = dueInfo(t); return d ? `<span class="due ${d.cls}">${d.label}</span>` : ""; };
+const priBadge = t => `<span class="pri p-${priOf(t)}" title="優先度：${PRI[priOf(t)].t}">${PRI[priOf(t)].t}</span>`;
 const allBlocks = k => (days[k] ? days[k].blocks : []).concat(recFor(k));
 const wdText = ds => { const o = [1,2,3,4,5,6,0].filter(d => ds.includes(d)); return o.length === 7 ? "每天" : o.join() === "1,2,3,4,5" ? "平日" : o.length===2&&o.includes(0)&&o.includes(6) ? "週末" : "週" + o.map(d => WD[d]).join("、"); };
 
@@ -488,7 +558,7 @@ function setView(v){
   ui.view = v; saveUI();
   $("#app").className = "view-" + v;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
-  if (v === "week") renderWeek(); else if (v === "month") renderMonth(); else if (v === "day") renderDay(); else renderTodo();
+  if (v === "week") renderWeek(); else if (v === "month") renderMonth(); else if (v === "all") renderMaster(); else if (v === "day") renderDay(); else renderTodo();
   if (v === "day" && isDesk()) renderTodo();
 }
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setView(b.dataset.view); });
@@ -519,6 +589,7 @@ function renderRecs(){
 }
 function renderTodo(){
   renderRecs();
+  if (ui.view === "all") renderMaster();
   const el = $("#projList");
   if (!loaded) { el.innerHTML = `<div class="empty">載入中…</div>`; return; }
   if (!S.projects.length) { el.innerHTML = `<div class="empty">還沒有專案。<br>先新增一個專案（例如「碩士論文」「日常雜事」），再把待辦加進去。</div>`; return; }
@@ -550,7 +621,7 @@ function taskRow(t, sub, sch){
   return `<li class="task ${sub?"sub":""} ${t.done?"done":""}" data-id="${t.id}">
     <span class="handle" title="拖曳到時間軸">⠿</span>
     <input type="checkbox" ${t.done?"checked":""} data-act="check" aria-label="完成">
-    <span class="t" data-act="editTask">${esc(t.title)}</span>
+    ${priOf(t) === "h" ? priBadge(t) : ""}<span class="t" data-act="editTask">${esc(t.title)}</span>${dueBadge(t)}
     ${sch.has(t.id) ? `<span class="sched-dot" title="已排入當日"></span>` : ""}
     <span class="est">${hm(t.est||30)}</span>
     <button class="ico" data-act="sched" title="排入${shortDate(ui.date)}" aria-label="排入當日">⇥</button>
@@ -652,7 +723,7 @@ function renderTray(){
   if (!loaded || !open.length) { tr.innerHTML = `<div class="tray-h"><span>待排入</span></div><div class="empty" style="padding:6px">${loaded ? "沒有未完成的待辦，到「待辦」分頁新增吧" : "載入中…"}</div>`; return; }
   const sch = scheduledToday();
   tr.innerHTML = `<div class="tray-h"><span>待排入 · 點一下自動排，長按拖曳到指定時間</span></div>
-    <div class="chips">${open.map(t => `<div class="chip ${sch.has(t.id)?"sch":""}" style="--c:${colorOf(t.projectId)}" data-id="${t.id}">${esc(t.title)} · ${hm(t.est||30)}</div>`).join("")}</div>`;
+    <div class="chips">${open.map(t => `<div class="chip ${sch.has(t.id)?"sch":""}" style="--c:${colorOf(t.projectId)}" data-id="${t.id}">${esc(t.title)} · ${hm(t.est||30)}${(() => { const d = dueInfo(t); return d && d.cls ? `<span class="cd">${d.label}</span>` : ""; })()}</div>`).join("")}</div>`;
   tr.querySelectorAll(".chip").forEach(c => attachTaskDrag(c, c.dataset.id, true));
 }
 
@@ -912,20 +983,35 @@ function readDurOf(id){
 document.addEventListener("click", e => {
   const b = e.target.closest(".durq button"); if (!b) return;
   const id = b.parentElement.dataset.for, x = +b.dataset.m;
+  if (id === "end") { const en = Math.min(readStart() + x, END); $("#mEnd").value = fmt(en % 1440); keepDur = en - readStart(); updDurTxt(); return; }
   $("#"+id+"H").value = Math.floor(x/60); $("#"+id+"M").value = x % 60;
 });
+let keepDur = 60;
 function timeFields(start, dur){
+  const end = Math.min(start + dur, END);
+  keepDur = Math.max(end - start, 5);
   return `<div class="two">
-      <label class="fld">開始<input type="time" id="mStart" value="${fmt(start)}" min="06:00" max="23:55" step="300"></label>
-      <div class="fld">長度${durInputs("mDur", dur)}</div>
-    </div>`;
+      <label class="fld">開始<input type="time" id="mStart" value="${fmt(start)}" step="300"></label>
+      <label class="fld">結束<input type="time" id="mEnd" value="${fmt(end % 1440)}" step="300"></label>
+    </div>
+    <div class="durline"><span id="mDurTxt">共 ${hm(end - start)}</span><span class="durq" data-for="end">${[15,30,45,60,90,120,180].map(x => `<button type="button" data-m="${x}">${hm(x)}</button>`).join("")}</span></div>`;
 }
-function readStart(){
-  const v = ($("#mStart").value || "").split(":").map(Number);
-  if (v.length < 2 || isNaN(v[0]) || isNaN(v[1])) return 9*60;
-  return clamp(v[0]*60 + v[1], START, END - 5);
+const parseHM = v => { const p = (v || "").split(":").map(Number); return p.length < 2 || isNaN(p[0]) || isNaN(p[1]) ? null : p[0]*60 + p[1]; };
+function readStart(){ const m = parseHM($("#mStart").value); return m == null ? 9*60 : clamp(m, START, END - 5); }
+function readEnd(){ let m = parseHM($("#mEnd").value); if (m == null) return null; if (m === 0) m = 1440; return m; }
+function readDur(){ const e = readEnd(); return e == null ? 0 : e - readStart(); }
+function timeOk(){
+  if (readDur() < 5) { toast("結束時間要晚於開始時間"); return false; }
+  const m = parseHM($("#mStart").value); if (m != null && m < START) toast("時間軸從 06:00 開始，已調整為 06:00");
+  return true;
 }
-const readDur = () => readDurOf("mDur");
+function updDurTxt(){ const el = $("#mDurTxt"); if (!el) return; const d = readDur(); el.textContent = d >= 5 ? `共 ${hm(d)}` : "結束要晚於開始"; el.classList.toggle("bad", d < 5); }
+document.addEventListener("input", e => {
+  if (e.target.id === "mStart") {           // moving the start keeps the length
+    const st = parseHM(e.target.value); if (st == null) return;
+    const en = Math.min(st + keepDur, END); $("#mEnd").value = fmt(en % 1440); updDurTxt();
+  } else if (e.target.id === "mEnd") { updDurTxt(); keepDur = Math.max(readDur(), 5); }
+});
 function newRecurring(){
   const b = { id: uid(), taskId: null, projectId: null, title: "", start: 9*60, dur: 120, done: false };
   editBlock(b, true, []);
@@ -950,10 +1036,11 @@ function editRecurring(r, k, seriesOnly){
   $("#mCancel").onclick = closeModal;
   const vals = () => ({ title: $("#mTitle").value.trim() || r.title, projectId: $("#mProj").value || null, start: readStart(), dur: Math.min(readDur(), END - readStart()) });
   if (occ) {
-    $("#mOnce").onclick = () => { detachOccurrence(k, occ, Object.assign(vals(), { done: $("#mDone").checked })); closeModal(); renderDay(); };
+    $("#mOnce").onclick = () => { if (!timeOk()) return; detachOccurrence(k, occ, Object.assign(vals(), { done: $("#mDone").checked })); closeModal(); renderDay(); };
     $("#mSkip").onclick = () => { r.skip = (r.skip || []).concat(k); saveMain(); closeModal(); renderDay(); toast("這次已取消，其他週照常"); };
   }
   $("#mSeries").onclick = () => {
+    if (!timeOk()) return;
     const v = vals(), ds = pickedDays(), dt = readDates();
     if (!ds.length) { toast("至少選一個星期"); return; }
     if (!dt) return;
@@ -1003,6 +1090,7 @@ function editBlock(b, isNew, preDays){
   $("#mCancel").onclick = closeModal;
   if (!isNew) confirmBtn($("#mDel"), "再按一次刪除", () => { days[k].blocks = days[k].blocks.filter(x => x.id !== b.id); saveDay(k); closeModal(); renderDay(); renderTodo(); });
   $("#mSave").onclick = () => {
+    if (!timeOk()) return;
     const ds = t ? [] : pickedDays();
     if (preDays && !ds.length) { toast("請選擇每週哪幾天"); return; }
     if (ds.length) {
@@ -1030,12 +1118,17 @@ function editTask(id){
       <label class="fld">專案<select id="mProj">${S.projects.map(p => `<option value="${p.id}" ${p.id===t.projectId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></label>
       <div class="fld">預估時間${durInputs("mEst", t.est||30)}</div>
     </div>
+    <div class="fld">優先度<div class="seg" id="mPri">${["h","m","l"].map(p => `<button type="button" data-p="${p}" class="${p===priOf(t)?"on":""}">${PRI[p].t}</button>`).join("")}</div></div>
+    <div class="fld">截止日期<div class="duerow"><input type="date" id="mDue" value="${t.due || ""}"><button type="button" class="btn ghost sm" id="mDueClr">清除</button></div></div>
     ${subs.length ? `<p class="fld">底下有 ${subs.length} 個小事項，刪除時會一起刪除。</p>` : ""}
     <div class="acts"><button class="btn danger" id="mDel">刪除</button><span style="display:flex;gap:8px"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mSave">儲存</button></span></div>`);
   $("#mCancel").onclick = closeModal;
+  $("#mPri").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $("#mPri").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); });
+  $("#mDueClr").onclick = () => { $("#mDue").value = ""; };
   confirmBtn($("#mDel"), "再按一次刪除", () => { S.tasks = S.tasks.filter(x => x.id !== id && x.parentId !== id); saveMain(); closeModal(); renderTodo(); renderTray(); });
   $("#mSave").onclick = () => {
     t.title = $("#mTitle").value.trim() || t.title; t.est = readDurOf("mEst");
+    t.priority = ($("#mPri .on") || {}).dataset?.p || "m"; t.due = $("#mDue").value || null;
     const np = $("#mProj").value;
     if (np !== t.projectId) { t.projectId = np; subs.forEach(s => s.projectId = np); }
     saveMain(); closeModal(); renderTodo(); renderTray();
@@ -1131,6 +1224,95 @@ $("#copySummary").addEventListener("click", async () => {
   catch { openModal(`<h3>複製本週統整</h3><textarea class="copybox" readonly>${esc(s)}</textarea><div class="acts"><span></span><button class="btn" id="mCancel">關閉</button></div>`); const ta = $("#sheet textarea"); ta.focus(); ta.select(); $("#mCancel").onclick = closeModal; }
 });
 
+/* ---------- MASTER todo view ---------- */
+function bucketOf(t, sort){
+  if (sort === "pri") { const p = priOf(t); return { k: PRI[p].o, t: `${PRI[p].t}優先`, c: "" }; }
+  if (sort === "proj") { const i = S.projects.findIndex(p => p.id === t.projectId); return { k: i, t: (proj(t.projectId) || { name: "其他" }).name, c: "" }; }
+  if (sort === "created") return { k: 0, t: "", c: "" };
+  const d = dueInfo(t);
+  if (!d) return { k: 9, t: "沒有截止日", c: "" };
+  if (t.done) return { k: 5, t: "已完成", c: "" };
+  if (d.diff < 0) return { k: 0, t: "已逾期", c: "over" };
+  if (d.diff === 0) return { k: 1, t: "今天截止", c: "today" };
+  if (d.diff === 1) return { k: 2, t: "明天截止", c: "" };
+  if (d.diff <= 7) return { k: 3, t: "7 天內", c: "" };
+  return { k: 4, t: "之後", c: "" };
+}
+function renderMaster(){
+  const el = $("#allPanel"), f = ui.mf;
+  if (!loaded) { el.innerHTML = `<div class="empty">載入中…</div>`; return; }
+  const open = S.tasks.filter(t => !t.done);
+  let over = 0, today = 0, near = 0, high = 0;
+  open.forEach(t => { const d = dueInfo(t); if (priOf(t) === "h") high++; if (!d) return; if (d.diff < 0) over++; else if (d.diff === 0) today++; else if (d.diff <= 3) near++; });
+  const pOpts = S.projects.map(p => `<option value="${p.id}" ${p.id === ui.maProj ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+  let list = S.tasks.filter(t => f.status === "all" || (f.status === "open" ? !t.done : t.done));
+  if (f.pri !== "all") list = list.filter(t => priOf(t) === f.pri);
+  if (f.proj !== "all") list = list.filter(t => t.projectId === f.proj);
+  const dk = t => t.due || "9999-99-99";
+  const cDue = (a, b) => dk(a) < dk(b) ? -1 : dk(a) > dk(b) ? 1 : 0;
+  const cPri = (a, b) => PRI[priOf(a)].o - PRI[priOf(b)].o;
+  const pIdx = t => S.projects.findIndex(p => p.id === t.projectId);
+  const cmp = { due: (a,b) => cDue(a,b) || cPri(a,b), pri: (a,b) => cPri(a,b) || cDue(a,b), proj: (a,b) => pIdx(a) - pIdx(b) || cPri(a,b) || cDue(a,b), created: (a,b) => (b.created||0) - (a.created||0) }[f.sort];
+  list.sort((a, b) => (bucketOf(a, f.sort).k - bucketOf(b, f.sort).k) || cmp(a, b));
+  const groups = [];
+  list.forEach(t => { const g = bucketOf(t, f.sort); const last = groups[groups.length - 1]; if (last && last.k === g.k && last.t === g.t) last.items.push(t); else groups.push(Object.assign({ items: [t] }, g)); });
+  const row = t => { const p = proj(t.projectId), par = t.parentId && task(t.parentId), d = dueInfo(t);
+    return `<li class="mrow ${t.done ? "done" : ""} ${d && !t.done ? d.cls : ""}" data-id="${t.id}" style="--c:${colorOf(t.projectId)}">
+      <input type="checkbox" data-act="check" ${t.done ? "checked" : ""} aria-label="完成">
+      <div class="mmain"><div class="mt1">${priBadge(t)}<span class="t" data-act="editTask">${esc(t.title)}</span></div>
+      <div class="mt2"><span class="pj"><span class="dot"></span>${esc(p ? p.name : "其他")}${par ? ` › ${esc(par.title)}` : ""}</span><span class="est">${hm(t.est || 30)}</span>${dueBadge(t)}</div></div>
+      ${t.done ? "" : `<button class="ico" data-act="sched" title="排入${shortDate(ui.date)}" aria-label="排入當日">⇥</button>`}
+    </li>`; };
+  el.innerHTML = `
+    <div class="panel-head"><h2>待辦總覽</h2><span style="font-size:12.5px;color:var(--muted)">未完成 ${open.length} 項</span></div>
+    <div class="mstats">
+      <div class="mstat over"><b>${over}</b>已逾期</div><div class="mstat today"><b>${today}</b>今天截止</div>
+      <div class="mstat near"><b>${near}</b>3 天內</div><div class="mstat"><b>${high}</b>高優先</div>
+    </div>
+    <form class="madd" id="mAdd">
+      <input type="text" id="maTitle" placeholder="新增待辦，按 Enter" maxlength="80">
+      <button class="btn">＋</button>
+      <div class="opts">
+        <select id="maProj" aria-label="專案">${pOpts || `<option value="">（會建立「一般」專案）</option>`}</select>
+        <select id="maPri" aria-label="優先度">${["h","m","l"].map(p => `<option value="${p}" ${p === (ui.maPri || "m") ? "selected" : ""}>${PRI[p].t}優先</option>`).join("")}</select>
+        <input type="date" id="maDue" aria-label="截止日期" title="截止日期（可不填）">
+      </div>
+    </form>
+    <div class="mfil">
+      <select data-f="status"><option value="open">未完成</option><option value="all">全部</option><option value="done">已完成</option></select>
+      <select data-f="pri"><option value="all">所有優先度</option><option value="h">高</option><option value="m">中</option><option value="l">低</option></select>
+      <select data-f="proj"><option value="all">所有專案</option>${S.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>
+      <span style="margin-left:auto">排序</span>
+      <select data-f="sort"><option value="due">截止日</option><option value="pri">優先度</option><option value="proj">專案</option><option value="created">最新加入</option></select>
+    </div>
+    ${groups.length ? groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("")
+      : `<div class="empty">${S.tasks.length ? "沒有符合篩選的待辦" : "還沒有待辦，從上面新增第一個吧"}</div>`}`;
+  el.querySelectorAll(".mfil select").forEach(sel => { if (sel.dataset.f === "proj" && !proj(f.proj)) f.proj = "all"; sel.value = f[sel.dataset.f]; });
+}
+$("#allPanel").addEventListener("change", e => {
+  const sel = e.target.closest(".mfil select");
+  if (sel) { ui.mf[sel.dataset.f] = sel.value; saveUI(); renderMaster(); return; }
+  if (e.target.id === "maProj") ui.maProj = e.target.value;
+  if (e.target.id === "maPri") ui.maPri = e.target.value;
+});
+$("#allPanel").addEventListener("submit", e => {
+  e.preventDefault();
+  const title = $("#maTitle").value.trim(); if (!title) return;
+  let pid = $("#maProj").value;
+  if (!proj(pid)) { if (!S.projects.length) S.projects.push({ id: uid(), name: "一般", color: COLORS[0] }); pid = S.projects[0].id; }
+  ui.maProj = pid; ui.maPri = $("#maPri").value;
+  S.tasks.push({ id: uid(), projectId: pid, parentId: null, title, est: 30, priority: ui.maPri, due: $("#maDue").value || null, done: false, created: Date.now() });
+  saveMain(); renderMaster(); renderTray(); if (isDesk()) renderTodo();
+  const i = $("#maTitle"); i && i.focus();
+});
+$("#allPanel").addEventListener("click", e => {
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const t = task(a.closest(".mrow").dataset.id); if (!t) return;
+  if (a.dataset.act === "check") setTaskDone(t, a.checked);
+  else if (a.dataset.act === "editTask") editTask(t.id);
+  else if (a.dataset.act === "sched") quickSchedule(t);
+});
+
 /* ---------- MONTH panel ---------- */
 ui.month = ui.date.slice(0, 7);
 const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; };
@@ -1154,10 +1336,12 @@ async function renderMonth(){
       const d = parseKey(k), inM = k.slice(0, 7) === ym;
       const bl = allBlocks(k).sort((a, b) => a.start - b.start);
       const plan = bl.reduce((s, b) => s + b.dur, 0), dn = bl.filter(b => b.done).reduce((s, b) => s + b.dur, 0);
+      const dueN = S.tasks.filter(t => !t.done && t.due === k).length;
       const max = small ? 6 : 3, shown = bl.slice(0, max);
       const items = shown.map(b => `<div class="mi ${b.done ? "done" : ""}" style="--c:${colorOf(b.projectId)}" title="${fmt(b.start)} ${esc(b.title)}"><span class="dot"></span><span>${b.recId ? "↻" : ""}${esc(b.title)}</span></div>`).join("");
       return `<button class="mc ${inM ? "" : "out"} ${k === today ? "today" : ""}" data-k="${k}" aria-label="${d.getMonth()+1}月${d.getDate()}日">
         <div class="mtop"><span class="mn">${d.getDate()}</span>${plan ? `<span class="mh">${hrs(plan)}h</span>` : ""}</div>
+        ${dueN ? `<div class="mdue">⚑ 截止 ${dueN}</div>` : ""}
         ${plan ? `<div class="mbar"><i style="width:${dn / plan * 100}%"></i></div>` : ""}
         ${small ? `<div class="mdots">${items}</div>` : items}
         ${bl.length > max ? `<div class="mmore">+${bl.length - max} 個</div>` : ""}
