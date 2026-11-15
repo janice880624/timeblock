@@ -1109,7 +1109,7 @@ function editRecurring(r, k, seriesOnly){
       <button class="btn" id="mSeries">${seriesOnly ? "儲存" : "套用到之後每一次"}</button>
     </div>
     <div class="acts" style="margin-top:12px">
-      <span style="display:flex;gap:8px">${occ ? `<button class="btn danger sm" id="mSkip">這次取消</button>` : ""}<button class="btn danger sm" id="mEnd">刪除</button></span>
+      <span style="display:flex;gap:8px">${occ ? `<button class="btn danger sm" id="mSkip">這次取消</button>` : ""}<button class="btn danger sm" id="mDelRec">刪除</button></span>
       <button class="btn ghost sm" id="mCancel">關閉</button>
     </div>`);
   bindWdPicker(); bindDateFields();
@@ -1143,7 +1143,7 @@ function editRecurring(r, k, seriesOnly){
     saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit();
     toast(dt.until ? `固定行程已更新（到 ${fullDate(dt.until)}）` : "固定行程已更新");
   };
-  $("#mEnd").onclick = () => {
+  $("#mDelRec").onclick = () => {
     const at = seriesOnly ? todayKey() : k, canStop = r.from < at;
     const box = document.createElement("div"); box.className = "delbox";
     box.innerHTML = `<p>要怎麼刪除「${esc(r.title)}」？</p>
