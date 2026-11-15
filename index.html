@@ -310,7 +310,7 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .htable thead th b{display:block;color:var(--ink2);font-size:12px}
 .htable thead th.today b{color:#fff;background:var(--accent);border-radius:50%;width:20px;height:20px;line-height:20px;margin:1px auto 0}
 .htable .wk{border-left:1px solid var(--line)}
-.htable .nm{position:sticky;left:0;background:var(--card);z-index:1;text-align:left;padding:7px 8px 7px 10px;min-width:120px;max-width:170px;white-space:normal;cursor:pointer;border-right:1px solid var(--line)}
+.htable .nm{position:sticky;left:0;background:var(--card);z-index:1;text-align:left;padding:7px 8px 7px 10px;min-width:130px;max-width:190px;white-space:normal;cursor:pointer;border-right:1px solid var(--line)}
 .htable .nm b{display:flex;gap:6px;align-items:center;font-size:13.5px;font-weight:500;color:var(--ink)}
 .htable .nm small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
 .htable tr.ended .nm b{color:var(--muted)}
@@ -325,10 +325,34 @@ button.hc{cursor:pointer}
 .hc.future{border:1.5px solid color-mix(in srgb,var(--c) 40%,#fff);background:#fff}
 .hc.skip{color:var(--muted);background:var(--line2)}
 .hc.none::after{content:"";width:3px;height:3px;border-radius:50%;background:#dddbd4}
-@media(max-width:640px){.htable .nm{min-width:96px;max-width:118px;padding-left:8px}.htable .st{padding:5px 6px}.hc{width:22px;height:22px}#habitPanel .kpi b{font-size:20px}}
+@media(max-width:640px){.htable .nm{min-width:104px;max-width:124px;padding-left:8px}.htable .st{padding:5px 8px;min-width:84px!important}.htable .st small{white-space:normal}.wc{min-width:38px;height:28px;font-size:11.5px}#habitPanel .kpi b{font-size:20px}}
+.htable thead th.cur{color:var(--accent)}
+.htable thead th.cur b{color:var(--accent)}
+.htable td.cur{background:#f7faff}
+.wc{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:30px;border-radius:8px;font-size:12px;font-style:normal;border:none;padding:0 6px;font-variant-numeric:tabular-nums;color:var(--ink2);background:transparent}
+button.wc{cursor:pointer}
+.wc.full{background:var(--c);color:#fff;font-weight:700}
+.wc.part{background:linear-gradient(90deg,color-mix(in srgb,var(--c) 55%,#fff) var(--p),color-mix(in srgb,var(--c) 12%,#fff) var(--p));color:var(--ink);font-weight:500}
+.wc.zero{background:#f6e4e3;color:#c9413f;font-weight:500}
+.wc.pending{border:2px dashed var(--c);background:#fff}
+.wc.future{border:1.5px solid color-mix(in srgb,var(--c) 35%,#fff);background:#fff;color:var(--muted)}
+.wc.skip{background:var(--line2);color:var(--muted)}
+.wc.none{min-width:0}
+.wc.none::after{content:"";width:3px;height:3px;border-radius:50%;background:#dddbd4}
+.htable .st{min-width:128px}
+.sbar{height:4px;background:var(--line2);border-radius:3px;overflow:hidden;margin:4px 0 3px}
+.sbar i{display:block;height:100%;background:var(--c)}
+.wklist{list-style:none;margin:0 0 12px;padding:0}
+.wklist li{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-top:1px solid var(--line2);font-size:14px}
+.wklist li:first-child{border-top:none}
+.wklist em{font-style:normal;color:var(--muted);font-size:13px}
+.wklist label{display:flex;gap:6px;align-items:center}
+.wklist input{width:18px;height:18px}
 .hlegend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:10px 2px 0}
 .hlegend span{display:flex;align-items:center;gap:5px}
 .hlegend .hc{width:18px;height:18px;font-size:10px;border-radius:5px}
+.delbox{border:1px solid #f1c9c8;background:#fff7f6;border-radius:12px;padding:12px;margin-top:12px;display:grid;gap:8px}
+.delbox p{margin:0 0 2px;font-size:14px;font-weight:500}
 .copybox{width:100%;min-height:160px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:8px}
 </style>
 </head>
@@ -379,11 +403,10 @@ button.hc{cursor:pointer}
     <div class="kpis" id="hKpis"></div>
     <div class="htable-wrap" id="hTable"></div>
     <div class="hlegend">
-      <span><i class="hc done" style="--c:#6b6a63">✓</i>完成</span><span><i class="hc miss">✕</i>沒做到</span>
-      <span><i class="hc todo" style="--c:#6b6a63"></i>今天待完成</span><span><i class="hc future" style="--c:#6b6a63"></i>還沒到</span>
-      <span><i class="hc skip">–</i>取消</span>
+      <span><i class="wc full" style="--c:#6b6a63">3/3</i>全部完成</span><span><i class="wc part" style="--c:#6b6a63;--p:50%">1/2</i>部分完成</span>
+      <span><i class="wc zero">0/2</i>都沒做到</span><span><i class="wc pending" style="--c:#6b6a63">0/1</i>本週還沒做</span><span><i class="wc future" style="--c:#6b6a63">0/2</i>還沒到</span>
     </div>
-    <p class="hint">點格子可以勾選或取消完成（未來的日子不能勾）。點左邊名稱可以編輯固定行程。</p>
+    <p class="hint">每格是一週：完成次數 / 應做次數。點格子可以看那週每一次並勾選完成；點左邊名稱可以編輯或刪除。W 是今年第幾週（ISO 週數）。</p>
   </section>
 
   <section id="monthPanel" class="panel">
@@ -1120,11 +1143,19 @@ function editRecurring(r, k, seriesOnly){
     saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit();
     toast(dt.until ? `固定行程已更新（到 ${fullDate(dt.until)}）` : "固定行程已更新");
   };
-  confirmBtn($("#mEnd"), "再按一次刪除整個系列", () => {
-    const cut = addDays(seriesOnly ? todayKey() : k, -1);
-    if (cut < r.from) S.recurring = recs().filter(x => x.id !== r.id); else r.until = cut;
-    saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit(); toast("已刪除，過去的週統整會保留");
-  });
+  $("#mEnd").onclick = () => {
+    const at = seriesOnly ? todayKey() : k, canStop = r.from < at;
+    const box = document.createElement("div"); box.className = "delbox";
+    box.innerHTML = `<p>要怎麼刪除「${esc(r.title)}」？</p>
+      <button class="btn danger" id="mDelAll">完全刪除（連過去的紀錄一起刪）</button>
+      ${canStop ? `<button class="btn ghost" id="mDelFrom">從 ${shortDate(at)} 起停止，保留之前的紀錄</button>` : ""}
+      <button class="btn ghost" id="mDelBack">返回</button>`;
+    const acts = $("#sheet .acts"); acts.replaceWith(box);
+    const done = msg => { saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit(); toast(msg); };
+    $("#mDelAll").onclick = () => { S.recurring = recs().filter(x => x.id !== r.id); done(`已刪除「${r.title}」`); };
+    if (canStop) $("#mDelFrom").onclick = () => { r.until = addDays(at, -1); done(`「${r.title}」從 ${shortDate(at)} 起停止`); };
+    $("#mDelBack").onclick = () => { box.replaceWith(acts); };
+  };
 }
 function editBlock(b, isNew, preDays){
   const k = ui.date, t = b.taskId && task(b.taskId);
@@ -1370,26 +1401,44 @@ $("#allPanel").addEventListener("click", e => {
   else if (a.dataset.act === "sched") quickSchedule(t);
 });
 
-/* ---------- HABIT (recurring overview) ---------- */
+/* ---------- HABIT (recurring overview, one cell per week) ---------- */
 ui.hAnchor = mondayOf(todayKey());
-const hWeeks = () => matchMedia("(max-width:640px)").matches ? 1 : matchMedia("(max-width:1000px)").matches ? 2 : 4;
+const hWeeks = () => matchMedia("(max-width:640px)").matches ? 3 : matchMedia("(max-width:1000px)").matches ? 6 : 10;
 $("#prevHabit").onclick = () => { ui.hAnchor = addDays(ui.hAnchor, -7 * hWeeks()); renderHabit(); };
 $("#nextHabit").onclick = () => { ui.hAnchor = addDays(ui.hAnchor, 7 * hWeeks()); renderHabit(); };
 $("#thisHabitBtn").onclick = () => { ui.hAnchor = mondayOf(todayKey()); renderHabit(); };
+function isoWeek(k){
+  const d = parseKey(k); d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const w1 = new Date(d.getFullYear(), 0, 4);
+  return { y: d.getFullYear(), w: 1 + Math.round(((d - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7) };
+}
 function occState(r, k, today){
   const wd = parseKey(k).getDay();
   if (!r.days.includes(wd) || k < r.from || (r.until && k > r.until)) return "none";
   if ((r.skip || []).includes(k)) return "skip";
   if (k > today) return "future";
-  const done = !!((days[k] && days[k].rdone) || {})[r.id];
-  if (done) return "done";
+  if (((days[k] && days[k].rdone) || {})[r.id]) return "done";
   return k === today ? "todo" : "miss";
 }
+function occList(r, from, to, today){           // every scheduled occurrence of r between from..to
+  const out = []; let k = from > r.from ? from : r.from;
+  const end = r.until && r.until < to ? r.until : to;
+  for (let g = 0; k <= end && g < 800; k = addDays(k, 1), g++) { const st = occState(r, k, today); if (st !== "none") out.push({ k, st }); }
+  return out;
+}
+function seriesStats(r, today){
+  const end = r.until || today;
+  const all = occList(r, r.from, end, today).filter(o => o.st !== "skip");
+  const past = all.filter(o => o.st !== "future");
+  const dn = past.filter(o => o.st === "done").length;
+  return { total: r.until ? all.length : null, past: past.length, done: dn, miss: past.filter(o => o.st === "miss").length };
+}
 async function renderHabit(){
-  const n = hWeeks(), first = addDays(ui.hAnchor, -7 * (n - 1)), keys = [...Array(n * 7)].map((_, i) => addDays(first, i));
-  const last = keys[keys.length - 1], today = todayKey();
-  $("#hTitle").textContent = `${shortDate(first)} – ${shortDate(last)}`;
-  $("#hSub").textContent = n === 1 ? "一週" : `${n} 週`;
+  const n = hWeeks(), mondays = [...Array(n)].map((_, i) => addDays(ui.hAnchor, -7 * (n - 1 - i)));
+  const first = mondays[0], last = addDays(mondays[n - 1], 6), today = todayKey(), thisMon = mondayOf(today);
+  const w0 = isoWeek(first), w1 = isoWeek(mondays[n - 1]);
+  $("#hTitle").textContent = `${w0.y === w1.y ? w1.y : w0.y + "–" + w1.y} · W${w0.w} – W${w1.w}`;
+  $("#hSub").textContent = `${shortDate(first)} – ${shortDate(last)}`;
   const draw = () => {
     if (ui.view !== "habit") return;
     const items = recs().filter(r => r.from <= last && (!r.until || r.until >= first))
@@ -1399,53 +1448,74 @@ async function renderHabit(){
       $("#hTable").innerHTML = `<div class="empty">這段期間沒有固定行程。<br>到「專案」頁的「↻ 固定行程」新增上課、運動等每週固定的事。</div>`;
       return;
     }
-    let tDone = 0, tSched = 0, tMiss = 0, tMin = 0;
-    const head = keys.map(k => { const d = parseKey(k); return `<th class="${d.getDay() === 1 ? "wk" : ""} ${k === today ? "today" : ""}">${WD[d.getDay()]}<b>${d.getDate()}</b></th>`; }).join("");
+    let wDone = 0, wPast = 0, wMiss = 0, wMin = 0;
+    const head = mondays.map(m => `<th class="${m === thisMon ? "cur" : ""}"><b>W${isoWeek(m).w}</b>${shortDate(m)}</th>`).join("");
     const rows = items.map(r => {
-      let dn = 0, sc = 0;
-      const cells = keys.map(k => {
-        const st = occState(r, k, today), wk = parseKey(k).getDay() === 1 ? "wk" : "";
-        if (st === "done" || st === "miss" || st === "todo") { sc++; if (st === "done") { dn++; tMin += r.dur; } if (st === "miss") tMiss++; }
-        const lbl = { done: "✓", miss: "✕", skip: "–" }[st] || "";
-        const btn = st === "done" || st === "miss" || st === "todo";
-        return `<td class="${wk}">${btn ? `<button class="hc ${st}" data-r="${r.id}" data-k="${k}" title="${shortDate(k)} ${esc(r.title)}" aria-label="${shortDate(k)} ${st === "done" ? "已完成" : "未完成"}">${lbl}</button>` : `<i class="hc ${st}" title="${st === "skip" ? "這次取消" : ""}">${lbl}</i>`}</td>`;
+      const cells = mondays.map(m => {
+        const occ = occList(r, m, addDays(m, 6), today);
+        if (!occ.length) return `<td><i class="wc none"></i></td>`;
+        const live = occ.filter(o => o.st !== "skip"), dn = live.filter(o => o.st === "done").length;
+        const past = live.filter(o => o.st !== "future").length, miss = live.filter(o => o.st === "miss").length;
+        wDone += dn; wPast += past; wMiss += miss; wMin += dn * r.dur;
+        const fut = m > today, ratio = live.length ? dn / live.length : 0;
+        const cls = fut ? "future" : !live.length ? "skip" : dn === live.length ? "full" : dn ? "part" : past ? "zero" : "pending";
+        return `<td class="${m === thisMon ? "cur" : ""}"><button class="wc ${cls}" style="--p:${Math.round(ratio * 100)}%" data-r="${r.id}" data-m="${m}" title="W${isoWeek(m).w}：完成 ${dn}/${live.length} 次">${live.length ? `${dn}/${live.length}` : "–"}</button></td>`;
       }).join("");
-      tDone += dn; tSched += sc;
-      const ended = r.until && r.until < today;
+      const st = seriesStats(r, today), ended = r.until && r.until < today;
+      const pct = st.total ? Math.round(st.done / st.total * 100) : st.past ? Math.round(st.done / st.past * 100) : 0;
+      const rate = st.past ? Math.round(st.done / st.past * 100) : 0;
       return `<tr class="${ended ? "ended" : ""}" style="--c:${colorOf(r.projectId)}">
-        <th class="nm" data-rid="${r.id}"><b><span class="dot"></span>${esc(r.title)}</b><small>${wdText(r.days)} ${fmt(r.start)}${ended ? " · 已結束" : ""}</small></th>
+        <th class="nm" data-rid="${r.id}"><b><span class="dot"></span>${esc(r.title)}</b><small>${wdText(r.days)} ${fmt(r.start)} · ${rangeText(r)}${ended ? " · 已結束" : ""}</small></th>
         ${cells}
-        <td class="st">${sc ? `<b>${Math.round(dn / sc * 100)}%</b><small>${dn}/${sc} 次</small>` : `<small>—</small>`}</td>
+        <td class="st"><b>${pct}%</b><small>${st.total ? `完成 ${st.done} / 共 ${st.total} 次` : `完成 ${st.done} / ${st.past} 次`}</small>
+          <div class="sbar"><i style="width:${pct}%"></i></div>
+          ${st.total ? `<small>到今天完成率 ${rate}%</small>` : `<small>持續中</small>`}</td>
       </tr>`;
     }).join("");
-    $("#hTable").innerHTML = `<table class="htable"><thead><tr><th class="nm" style="cursor:default">固定行程</th>${head}<th class="st">完成率</th></tr></thead><tbody>${rows}</tbody></table>`;
+    $("#hTable").innerHTML = `<table class="htable"><thead><tr><th class="nm" style="cursor:default">固定行程</th>${head}<th class="st">整體進度</th></tr></thead><tbody>${rows}</tbody></table>`;
     $("#hKpis").innerHTML = `
-      <div class="kpi"><small>完成率</small><b>${tSched ? Math.round(tDone / tSched * 100) : 0}<em>%</em></b><em>到今天為止</em></div>
-      <div class="kpi"><small>完成</small><b>${tDone}<em> 次</em></b><em>共 ${tSched} 次</em></div>
-      <div class="kpi"><small>沒做到</small><b>${tMiss}<em> 次</em></b><em>不含取消的</em></div>
-      <div class="kpi"><small>完成時數</small><b>${hrs(tMin)}<em> 小時</em></b><em>固定行程累計</em></div>`;
-    const tw = $("#hTable"), tc = tw.querySelector("th.today");
-    if (tc && n > 1 && !tw.dataset.scrolled) { tw.scrollLeft = Math.max(0, tc.offsetLeft - tw.clientWidth + 120); tw.dataset.scrolled = 1; }
+      <div class="kpi"><small>這段期間完成率</small><b>${wPast ? Math.round(wDone / wPast * 100) : 0}<em>%</em></b><em>W${w0.w}–W${w1.w}，到今天為止</em></div>
+      <div class="kpi"><small>完成</small><b>${wDone}<em> 次</em></b><em>應完成 ${wPast} 次</em></div>
+      <div class="kpi"><small>沒做到</small><b>${wMiss}<em> 次</em></b><em>不含取消的</em></div>
+      <div class="kpi"><small>完成時數</small><b>${hrs(wMin)}<em> 小時</em></b><em>這段期間累計</em></div>`;
   };
-  $("#hTable").dataset.scrolled = "";
   draw();
   if (!loaded) return;
-  const missing = keys.filter(k => !days[k] && k <= today);
-  for (let i = 0; i < missing.length; i += 7) {
-    await Promise.all(missing.slice(i, i + 7).map(loadDay));
+  // stats need every past day since the earliest series start (capped at one year)
+  const items = recs().filter(r => r.from <= last && (!r.until || r.until >= first));
+  if (!items.length) return;
+  let from = items.reduce((m, r) => r.from < m ? r.from : m, first);
+  const cap = addDays(today, -366); if (from < cap) from = cap;
+  const need = [];
+  for (let k = from, g = 0; k <= today && g < 400; k = addDays(k, 1), g++) if (!days[k] && items.some(r => occState(r, k, today) !== "none")) need.push(k);
+  for (let i = 0; i < need.length; i += 7) {
+    await Promise.all(need.slice(i, i + 7).map(loadDay));
     if (ui.view !== "habit") return;
-    draw();
+    if (i % 28 === 0 || i + 7 >= need.length) draw();
   }
 }
-$("#hTable").addEventListener("click", async e => {
+function openWeek(r, m){
+  const today = todayKey(), occ = occList(r, m, addDays(m, 6), today);
+  const w = isoWeek(m);
+  openModal(`<h3>${esc(r.title)} · W${w.w}</h3>
+    <p class="fld">${shortDate(m)} – ${shortDate(addDays(m, 6))}　${wdText(r.days)} ${fmt(r.start)}–${fmt(r.start + r.dur)}</p>
+    <ul class="wklist">${occ.map(o => { const d = parseKey(o.k);
+      return `<li><span>${d.getMonth()+1}/${d.getDate()} 週${WD[d.getDay()]}</span>${
+        o.st === "skip" ? `<em>已取消</em>` : o.st === "future" ? `<em>還沒到</em>` :
+        `<label><input type="checkbox" data-k="${o.k}" ${o.st === "done" ? "checked" : ""}> 完成</label>`}</li>`; }).join("")}</ul>
+    <div class="acts"><button class="btn ghost" id="mEditRec">編輯固定行程</button><button class="btn" id="mCancel">完成</button></div>`);
+  $("#mCancel").onclick = () => { closeModal(); renderHabit(); };
+  $("#mEditRec").onclick = () => editRecurring(r, today, true);
+  $("#sheet").querySelectorAll("input[data-k]").forEach(cb => cb.addEventListener("change", async () => {
+    const d = await loadDay(cb.dataset.k); if (!d) { toast("讀取失敗，稍後再試"); cb.checked = !cb.checked; return; }
+    d.rdone = Object.assign({}, d.rdone, { [r.id]: cb.checked }); saveDay(cb.dataset.k);
+  }));
+}
+$("#hTable").addEventListener("click", e => {
   const nm = e.target.closest(".nm[data-rid]");
   if (nm) { const r = rec(nm.dataset.rid); if (r) editRecurring(r, todayKey(), true); return; }
-  const c = e.target.closest("button.hc"); if (!c) return;
-  const k = c.dataset.k, rid = c.dataset.r;
-  const d = await loadDay(k); if (!d) { toast("讀取失敗，稍後再試"); return; }
-  const now = !(d.rdone || {})[rid];
-  d.rdone = Object.assign({}, d.rdone, { [rid]: now }); saveDay(k);
-  renderHabit();
+  const c = e.target.closest("button.wc"); if (!c) return;
+  const r = rec(c.dataset.r); if (r) openWeek(r, c.dataset.m);
 });
 
 /* ---------- MONTH panel ---------- */
