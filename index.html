@@ -360,6 +360,27 @@ button.wc{cursor:pointer}
 .hlegend .hc{width:18px;height:18px;font-size:10px;border-radius:5px}
 .delbox{border:1px solid #f1c9c8;background:#fff7f6;border-radius:12px;padding:12px;margin-top:12px;display:grid;gap:8px}
 .delbox p{margin:0 0 2px;font-size:14px;font-weight:500}
+.lay{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+.lay button{border:none;background:none;padding:6px 10px;font-size:12.5px;color:var(--ink2)}
+.lay button.on{background:var(--ink);color:#fff}
+.mx-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:max-content}
+.mx th,.mx td{vertical-align:top;border-bottom:1px solid var(--line2);border-left:1px solid var(--line2);padding:8px}
+.mx tr:last-child th,.mx tr:last-child td{border-bottom:none}
+.mx thead th{font-size:12.5px;text-align:left;color:var(--ink2);font-weight:700;background:var(--card);white-space:nowrap;min-width:220px}
+.mx thead th small{font-weight:400;color:var(--muted);margin-left:5px}
+.mx thead th.over{color:#d63c3b}.mx thead th.today{color:#eb6834}
+.mx td.over{background:#fffafa}.mx td.today{background:#fffcf8}
+.mx .mx-p{position:sticky;left:0;z-index:1;background:var(--card);border-left:none;min-width:110px!important;max-width:150px;text-align:left;border-right:1px solid var(--line)}
+.mx tbody .mx-p{border-left:3px solid var(--c)}
+.mx .mx-p b{font-size:13.5px;display:inline;margin-left:5px;word-break:break-word}
+.mx .mx-p small{display:block;color:var(--muted);font-size:11.5px;font-weight:400;margin-top:2px}
+.mx-cell{border:none!important;background:transparent!important;display:grid;gap:6px;border-radius:0}
+.mx-cell .mrow{border:1px solid var(--line)!important;border-left-width:3px!important;border-radius:9px;background:#fff;padding:6px 6px 6px 6px}
+.mx-cell .mrow:not(.over):not(.today):not(.soon):not(.near){border-left-color:var(--line)!important}
+.mx-cell .mt1{font-size:13px}
+.mx-cell .mt2 .pj{display:none}
+@media(max-width:640px){.mx thead th{min-width:170px}.mx .mx-p{min-width:84px!important;max-width:100px}}
 .copybox{width:100%;min-height:160px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:8px}
 </style>
 </head>
@@ -574,7 +595,7 @@ const days = {}, weeks = {};
 const ui = Object.assign({ view: "day", hideDone: false, collapsed: {} }, lsGet("blk:ui") || {});
 ui.date = todayKey(); ui.weekStart = mondayOf(ui.date); ui.addingSub = null;
 let loaded = false;
-ui.mf = Object.assign({ status: "open", pri: "all", proj: "all", sort: "due" }, ui.mf || {});
+ui.mf = Object.assign({ status: "open", pri: "all", proj: "all", sort: "due", layout: "list" }, ui.mf || {});
 if (ui.recOpen == null) ui.recOpen = false;
 const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed, mf: ui.mf, recOpen: ui.recOpen });
 const saveMain = () => Store.save("main", S);
@@ -1324,6 +1345,23 @@ $("#copySummary").addEventListener("click", async () => {
 });
 
 /* ---------- MASTER todo view ---------- */
+function matrixHTML(list, row){
+  if (!list.length) return `<div class="empty">${S.tasks.length ? "沒有符合篩選的待辦" : "還沒有待辦，從上面新增第一個吧"}</div>`;
+  const colMap = new Map();
+  list.forEach(t => { const b = bucketOf(t, "due"); if (!colMap.has(b.k)) colMap.set(b.k, b); });
+  const cols = [...colMap.values()].sort((a, b) => a.k - b.k);
+  const pids = [...S.projects.map(p => p.id), "_"].filter(id => list.some(t => (proj(t.projectId) ? t.projectId : "_") === id));
+  const inCell = (pid, k) => list.filter(t => (proj(t.projectId) ? t.projectId : "_") === pid && bucketOf(t, "due").k === k)
+    .sort((a, b) => (PRI[priOf(a)].o - PRI[priOf(b)].o) || ((a.due || "9") < (b.due || "9") ? -1 : 1));
+  const head = cols.map(c => `<th class="${c.c}">${esc(c.t)}<small>${list.filter(t => bucketOf(t, "due").k === c.k).length}</small></th>`).join("");
+  const body = pids.map(pid => {
+    const p = proj(pid), n = list.filter(t => (proj(t.projectId) ? t.projectId : "_") === pid).length;
+    return `<tr style="--c:${p ? p.color : NONE_COLOR}"><th class="mx-p"><span class="dot"></span><b>${esc(p ? p.name : "其他")}</b><small>${n} 項</small></th>${
+      cols.map(c => { const ts = inCell(pid, c.k); return `<td class="${c.c}">${ts.length ? `<ul class="mlist mx-cell">${ts.map(row).join("")}</ul>` : ""}</td>`; }).join("")}</tr>`;
+  }).join("");
+  return `<div class="mx-wrap"><table class="mx"><thead><tr><th class="mx-p">專案</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
 function bucketOf(t, sort){
   if (sort === "pri") { const p = priOf(t); return { k: PRI[p].o, t: `${PRI[p].t}優先`, c: "" }; }
   if (sort === "proj") { const i = S.projects.findIndex(p => p.id === t.projectId); return { k: i, t: (proj(t.projectId) || { name: "其他" }).name, c: "" }; }
@@ -1381,10 +1419,11 @@ function renderMaster(){
       <select data-f="status"><option value="open">未完成</option><option value="all">全部</option><option value="done">已完成</option></select>
       <select data-f="pri"><option value="all">所有優先度</option><option value="h">高</option><option value="m">中</option><option value="l">低</option></select>
       <select data-f="proj"><option value="all">所有專案</option>${S.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>
-      <span style="margin-left:auto">排序</span>
-      <select data-f="sort"><option value="due">截止日</option><option value="pri">優先度</option><option value="proj">專案</option><option value="created">最新加入</option></select>
+      <div class="lay" role="group" aria-label="排版"><button type="button" data-lay="list" class="${f.layout !== "matrix" ? "on" : ""}">清單</button><button type="button" data-lay="matrix" class="${f.layout === "matrix" ? "on" : ""}">專案 × 截止日</button></div>
+      <span style="margin-left:auto" class="${f.layout === "matrix" ? "hidden" : ""}">排序</span>
+      <select data-f="sort" class="${f.layout === "matrix" ? "hidden" : ""}"><option value="due">截止日</option><option value="pri">優先度</option><option value="proj">專案</option><option value="created">最新加入</option></select>
     </div>
-    ${groups.length ? `<div class="mgroups">` + groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("") + `</div>`
+    ${f.layout === "matrix" ? matrixHTML(list, row) : groups.length ? `<div class="mgroups">` + groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("") + `</div>`
       : `<div class="empty">${S.tasks.length ? "沒有符合篩選的待辦" : "還沒有待辦，從上面新增第一個吧"}</div>`}`;
   el.querySelectorAll(".mfil select").forEach(sel => { if (sel.dataset.f === "proj" && !proj(f.proj)) f.proj = "all"; sel.value = f[sel.dataset.f]; });
 }
@@ -1405,6 +1444,8 @@ $("#allPanel").addEventListener("submit", e => {
   const i = $("#maTitle"); i && i.focus();
 });
 $("#allPanel").addEventListener("click", e => {
+  const lb = e.target.closest("[data-lay]");
+  if (lb) { ui.mf.layout = lb.dataset.lay; saveUI(); renderMaster(); return; }
   const a = e.target.closest("[data-act]"); if (!a) return;
   const t = task(a.closest(".mrow").dataset.id); if (!t) return;
   if (a.dataset.act === "check") setTaskDone(t, a.checked);
