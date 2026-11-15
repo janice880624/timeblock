@@ -189,6 +189,13 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .recs{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px;padding:10px 12px}
 .recs-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .recs-h b{font-size:14.5px}
+.recs-tog{display:flex;align-items:center;gap:6px;border:none;background:none;padding:0;flex:1;min-width:0;text-align:left}
+.recs-tog .caret{width:16px;color:var(--muted);transition:transform .15s}
+.recs.closed .recs-tog .caret{transform:rotate(-90deg)}
+.recs.closed{padding:8px 12px}
+.recs.closed .recs-h{margin-bottom:0}
+.recs-n{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec{padding:5px 0!important;font-size:13px!important}
 .rec{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line2);font-size:13.5px;cursor:pointer}
 .rec:first-of-type{border-top:none}
 .rec .t{flex:1;min-width:0}
@@ -568,7 +575,8 @@ const ui = Object.assign({ view: "day", hideDone: false, collapsed: {} }, lsGet(
 ui.date = todayKey(); ui.weekStart = mondayOf(ui.date); ui.addingSub = null;
 let loaded = false;
 ui.mf = Object.assign({ status: "open", pri: "all", proj: "all", sort: "due" }, ui.mf || {});
-const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed, mf: ui.mf });
+if (ui.recOpen == null) ui.recOpen = false;
+const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed, mf: ui.mf, recOpen: ui.recOpen });
 const saveMain = () => Store.save("main", S);
 const saveDay = k => Store.save("day-" + k, days[k]);
 async function loadDay(k){
@@ -661,10 +669,13 @@ function scheduledToday(){ const d = days[ui.date]; return new Set(d ? d.blocks.
 function renderRecs(){
   const el = $("#recList"); if (!loaded) { el.innerHTML = ""; return; }
   const today = todayKey(), act = recs().filter(r => !r.until || r.until >= today).sort((a,b) => a.start - b.start);
-  el.innerHTML = `<div class="recs"><div class="recs-h"><b>↻ 固定行程</b><button class="btn ghost sm" id="addRec">＋ 新增</button></div>
-    ${act.length ? act.map(r => `<div class="rec" data-rid="${r.id}" style="--c:${colorOf(r.projectId)}"><span class="dot"></span><span class="t">${esc(r.title)}<small>${wdText(r.days)} ${fmt(r.start)}–${fmt(r.start+r.dur)} · ${rangeText(r)}</small></span><span class="ico">⋯</span></div>`).join("")
+  const open = ui.recOpen || !act.length;
+  const todayN = recFor(ui.date).length;
+  el.innerHTML = `<div class="recs ${open ? "" : "closed"}"><div class="recs-h"><button class="recs-tog" id="recTog" aria-expanded="${open}"><span class="caret">▾</span><b>↻ 固定行程</b><span class="recs-n">${act.length} 個${todayN ? ` · ${shortDate(ui.date)} 有 ${todayN} 個` : ""}</span></button><button class="btn ghost sm" id="addRec">＋ 新增</button></div>
+    ${!open ? "" : act.length ? act.map(r => `<div class="rec" data-rid="${r.id}" style="--c:${colorOf(r.projectId)}"><span class="dot"></span><span class="t">${esc(r.title)}<small>${wdText(r.days)} ${fmt(r.start)}–${fmt(r.start+r.dur)} · ${rangeText(r)}</small></span><span class="ico">⋯</span></div>`).join("")
       : `<div class="empty" style="padding:8px 0;text-align:left">上課、固定會議、運動…設定一次，每週自動出現在時間軸。</div>`}</div>`;
   $("#addRec").onclick = newRecurring;
+  $("#recTog").onclick = () => { ui.recOpen = !open; saveUI(); renderRecs(); };
   el.querySelectorAll(".rec").forEach(x => x.onclick = () => editRecurring(rec(x.dataset.rid), todayKey(), true));
 }
 function renderTodo(){
