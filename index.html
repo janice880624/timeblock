@@ -178,6 +178,11 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .sw.on{outline:2px solid var(--ink)}
 .sheet .acts{display:flex;justify-content:space-between;gap:8px;margin-top:6px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13.5px;opacity:0;transition:.2s;z-index:500;pointer-events:none;white-space:nowrap}
+ #undoBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:6px 6px 6px 16px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:.2s;z-index:510;display:flex;align-items:center;gap:12px;max-width:92vw}
+#undoBar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#undoBar button{border:none;background:#fff;color:var(--ink);border-radius:999px;padding:6px 14px;font-weight:700;font-size:13px;flex:none}
+#undoBar.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+#undoBar.show ~ #toast,#toast.up{bottom:76px}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .wds{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
 .wd{width:36px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:13.5px;padding:0}
@@ -512,6 +517,7 @@ button.wc{cursor:pointer}
   <div class="login-err" id="loginErr"></div>
 </div></div>
 <div id="modal" class="modal hidden"><div class="sheet" id="sheet"></div></div>
+<div id="undoBar" role="status"><span></span><button type="button">復原</button></div>
 <div id="toast"></div>
 
 <script type="module">
@@ -563,6 +569,37 @@ function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 const Store = {
   mode: "local", col: null, pending: {}, inflight: {}, timers: {},
   gas: null, allLoaded: false, gTimer: null, gBusy: false, gAgain: false,
+  ver: {}, base: {}, onChange: null,
+  docOf(key){ return key === "main" ? S : key.startsWith("day-") ? days[key.slice(4)] : key.startsWith("week-") ? weeks[key.slice(5)] : null; },
+  applyDoc(key, d){
+    if (key === "main") { if (d && Array.isArray(d.projects)) { S = d; recs(); } }
+    else if (key.startsWith("day-")) days[key.slice(4)] = d && Array.isArray(d.blocks) ? d : { blocks: [] };
+    else if (key.startsWith("week-")) weeks[key.slice(5)] = d || { note: "" };
+  },
+  /* 還沒確認存進試算表的修改，先放在瀏覽器裡；關頁或斷線後，下次打開會補送 */
+  outboxPut(key, doc){
+    const ob = lsGet("blk:outbox") || {};
+    ob[key] = { doc, ver: key in this.ver ? this.ver[key] : null, base: this.base[key] ?? null };
+    lsSet("blk:outbox", ob);
+  },
+  outboxDel(key){ const ob = lsGet("blk:outbox") || {}; if (key in ob) { delete ob[key]; lsSet("blk:outbox", ob); } },
+  /* 切回頁面時，把其他裝置改過的資料抓回來 */
+  async sync(){
+    if (this.mode !== "gas" || !loaded || this.gBusy || DRAG.active || !$("#modal").classList.contains("hidden")) return;
+    let j; try { j = await this.gasCall({ action: "vers" }); } catch { return; }
+    const changed = Object.keys(j.vers || {}).filter(k => j.vers[k] !== this.ver[k]);
+    if (!changed.length) return;
+    let g; try { g = await this.gasCall({ action: "getMany", keys: changed }); } catch { return; }
+    if (!$("#modal").classList.contains("hidden") || DRAG.active) return;
+    changed.forEach(k => {
+      const server = g.docs[k];
+      if (k in this.pending) { const merged = merge3(this.base[k], this.docOf(k), server); this.applyDoc(k, merged); this.pending[k] = clone(merged); this.outboxPut(k, this.pending[k]); }
+      else this.applyDoc(k, server);
+      this.ver[k] = g.vers[k]; this.base[k] = clone(server);
+    });
+    this.onChange && this.onChange();
+    toast("已載入其他裝置的變更");
+  },
   async gasCall(body){
     let res;
     try { res = await fetch(this.gas.url, { method: "POST", body: JSON.stringify(Object.assign({ token: this.gas.token }, body)), redirect: "follow" }); }
@@ -575,9 +612,21 @@ const Store = {
   async flushGas(){
     if (this.gBusy) { this.gAgain = true; return; }
     const keys = Object.keys(this.pending); if (!keys.length) return;
-    const docs = {}; keys.forEach(k => { docs[k] = this.pending[k]; delete this.pending[k]; });
-    this.gBusy = true; let failed = false;
-    try { await this.gasCall({ action: "setMany", docs }); }
+    const docs = {}, base = {};
+    keys.forEach(k => { docs[k] = this.pending[k]; delete this.pending[k]; base[k] = k in this.ver ? this.ver[k] : null; });
+    this.gBusy = true; let failed = false, merged = 0;
+    try {
+      const j = await this.gasCall({ action: "setMany", docs, base });
+      Object.keys(j.written || {}).forEach(k => {
+        this.ver[k] = j.written[k]; this.base[k] = docs[k];
+        if (k in this.pending) this.outboxPut(k, this.pending[k]); else this.outboxDel(k);
+      });
+      Object.keys(j.conflicts || {}).forEach(k => {          // 別的裝置先改過：合併後再存一次
+        const c = j.conflicts[k], m = merge3(this.base[k], this.docOf(k) || docs[k], c.doc);
+        this.ver[k] = c.ver; this.base[k] = clone(c.doc);
+        this.applyDoc(k, m); this.pending[k] = clone(m); this.outboxPut(k, this.pending[k]); merged++;
+      });
+    }
     catch (e) {
       failed = true;
       keys.forEach(k => { if (!(k in this.pending)) this.pending[k] = docs[k]; });
@@ -586,6 +635,7 @@ const Store = {
     }
     this.gBusy = false;
     if (failed) { clearTimeout(this.gTimer); this.gTimer = setTimeout(() => this.flushGas(), 5000); return; }
+    if (merged) { this.onChange && this.onChange(); toast("已和其他裝置的變更合併"); }
     if (this.gAgain || Object.keys(this.pending).length) { this.gAgain = false; this.flushGas(); }
     else setSync("已存到你的試算表");
   },
@@ -599,7 +649,7 @@ const Store = {
   },
   save(key, data){
     this.pending[key] = JSON.parse(JSON.stringify(data));
-    if (this.mode === "gas") { clearTimeout(this.gTimer); this.gTimer = setTimeout(() => this.flushGas(), 700); setSync("儲存中…"); return; }
+    if (this.mode === "gas") { this.outboxPut(key, this.pending[key]); clearTimeout(this.gTimer); this.gTimer = setTimeout(() => this.flushGas(), 700); setSync("儲存中…"); return; }
     clearTimeout(this.timers[key]);
     this.timers[key] = setTimeout(() => this.flush(key), 450);
     setSync("儲存中…");
@@ -631,7 +681,45 @@ const Store = {
   flushAll(){ if (this.mode === "gas") { clearTimeout(this.gTimer); this.flushGas(); return; } Object.keys(this.pending).forEach(k => { clearTimeout(this.timers[k]); this.flush(k); }); }
 };
 function setSync(t){ $("#syncState").textContent = t; }
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Store.flushAll(); });
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { hiddenAt = Date.now(); Store.flushAll(); }
+  else if (Date.now() - hiddenAt > 15000) Store.sync();
+});
+setInterval(() => { if (document.visibilityState === "visible") Store.sync(); }, 180000);
+window.addEventListener("pagehide", () => Store.flushAll());
+window.addEventListener("beforeunload", e => { if (Store.mode === "gas" && (Object.keys(Store.pending).length || Store.gBusy)) { Store.flushAll(); e.preventDefault(); e.returnValue = ""; } });
+const clone = o => o == null ? o : JSON.parse(JSON.stringify(o));
+const sameJ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const isObj = o => o && typeof o === "object" && !Array.isArray(o);
+const isIdArr = a => Array.isArray(a) && a.length > 0 && a.every(x => isObj(x) && x.id != null);
+/* 三方合併：base＝上次和試算表一致的版本，local＝這台的，server＝試算表現在的。
+   只把「這台改過的部分」套到 server 上；有 id 的清單（專案、待辦、方塊、固定行程）逐筆合併。 */
+function merge3(b, l, srv){
+  b = isObj(b) ? b : {}; l = isObj(l) ? l : {}; srv = isObj(srv) ? srv : {};
+  const out = clone(srv);
+  new Set([...Object.keys(l), ...Object.keys(b)]).forEach(k => {
+    const bv = b[k], lv = l[k], sv = srv[k];
+    if (sameJ(lv, bv)) return;                                   // 這台沒改：用 server 的
+    if (lv === undefined) { delete out[k]; return; }              // 這台刪掉了
+    if ((isIdArr(lv) || isIdArr(bv) || isIdArr(sv)) && Array.isArray(lv)) out[k] = mergeArr(Array.isArray(bv) ? bv : [], lv, Array.isArray(sv) ? sv : []);
+    else if (isObj(lv) && isObj(sv)) out[k] = merge3(isObj(bv) ? bv : {}, lv, sv);
+    else out[k] = clone(lv);
+  });
+  return out;
+}
+function mergeArr(b, l, srv){
+  const bm = new Map(b.map(x => [x.id, x])), lm = new Map(l.map(x => [x.id, x]));
+  let out = srv.map(clone);
+  const idx = id => out.findIndex(x => x.id === id);
+  l.forEach(item => {
+    const base = bm.get(item.id), i = idx(item.id);
+    if (!base) { if (i < 0) out.push(clone(item)); }                       // 這台新增的
+    else if (!sameJ(item, base)) { if (i < 0) out.push(clone(item)); else out[i] = clone(item); }   // 這台修改的
+  });
+  b.forEach(item => { if (!lm.has(item.id)) out = out.filter(x => x.id !== item.id); });          // 這台刪掉的
+  return out;
+}
 
 /* ---------- state ---------- */
 let S = { projects: [], tasks: [] };
@@ -1113,6 +1201,20 @@ const isTouch = () => matchMedia("(pointer:coarse)").matches;
 $("#modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#modal").classList.contains("hidden")) closeModal(); });
 const projOptions = sel => `<option value="">（不屬於專案）</option>` + S.projects.map(p => `<option value="${p.id}" ${p.id===sel?"selected":""}>${esc(p.name)}</option>`).join("");
+let undoTimer;
+/* 刪除前先記下受影響的資料，7 秒內可以按「復原」 */
+function withUndo(msg, keys, fn){
+  const snap = keys.map(k => [k, clone(Store.docOf(k))]);
+  fn();
+  const bar = $("#undoBar");
+  bar.querySelector("span").textContent = msg; bar.classList.add("show");
+  clearTimeout(undoTimer); undoTimer = setTimeout(() => bar.classList.remove("show"), 7000);
+  bar.querySelector("button").onclick = () => {
+    snap.forEach(([k, d]) => { if (d) { Store.applyDoc(k, clone(d)); Store.save(k, Store.docOf(k)); } });
+    bar.classList.remove("show"); clearTimeout(undoTimer); closeModal(); renderAll(); if (ui.view === "habit") renderHabit();
+    toast("已復原");
+  };
+}
 function confirmBtn(btn, label, fn){
   btn.addEventListener("click", () => { if (btn.dataset.arm) fn(); else { btn.dataset.arm = 1; btn.textContent = label; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.arm; btn.textContent = "刪除"; } }, 3000); } });
 }
@@ -1193,7 +1295,7 @@ function editRecurring(r, k, seriesOnly){
   const vals = () => ({ title: $("#mTitle").value.trim() || r.title, projectId: $("#mProj").value || null, start: readStart(), dur: Math.min(readDur(), END - readStart()) });
   if (occ) {
     $("#mOnce").onclick = () => { if (!timeOk()) return; detachOccurrence(k, occ, Object.assign(vals(), { done: $("#mDone").checked })); closeModal(); renderDay(); };
-    $("#mSkip").onclick = () => { r.skip = (r.skip || []).concat(k); saveMain(); closeModal(); renderDay(); toast("這次已取消，其他週照常"); };
+    $("#mSkip").onclick = () => withUndo("這次已取消，其他週照常", ["main"], () => { r.skip = (r.skip || []).concat(k); saveMain(); closeModal(); renderDay(); });
   }
   $("#mSeries").onclick = () => {
     if (!timeOk()) return;
@@ -1227,9 +1329,9 @@ function editRecurring(r, k, seriesOnly){
       ${canStop ? `<button class="btn ghost" id="mDelFrom">從 ${shortDate(at)} 起停止，保留之前的紀錄</button>` : ""}
       <button class="btn ghost" id="mDelBack">返回</button>`;
     const acts = $("#sheet .acts"); acts.replaceWith(box);
-    const done = msg => { saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit(); toast(msg); };
-    $("#mDelAll").onclick = () => { S.recurring = recs().filter(x => x.id !== r.id); done(`已刪除「${r.title}」`); };
-    if (canStop) $("#mDelFrom").onclick = () => { r.until = addDays(at, -1); done(`「${r.title}」從 ${shortDate(at)} 起停止`); };
+    const done = () => { saveMain(); closeModal(); renderDay(); renderTodo(); if (ui.view === "month") renderMonth(); if (ui.view === "habit") renderHabit(); };
+    $("#mDelAll").onclick = () => withUndo(`已刪除「${r.title}」`, ["main"], () => { S.recurring = recs().filter(x => x.id !== r.id); done(); });
+    if (canStop) $("#mDelFrom").onclick = () => withUndo(`「${r.title}」從 ${shortDate(at)} 起停止`, ["main"], () => { r.until = addDays(at, -1); done(); });
     $("#mDelBack").onclick = () => { box.replaceWith(acts); };
   };
 }
@@ -1252,7 +1354,7 @@ function editBlock(b, isNew, preDays){
     $("#mWds").nextElementSibling.addEventListener("click", () => setTimeout(showRange));
   }
   $("#mCancel").onclick = closeModal;
-  if (!isNew) confirmBtn($("#mDel"), "再按一次刪除", () => { days[k].blocks = days[k].blocks.filter(x => x.id !== b.id); saveDay(k); closeModal(); renderDay(); renderTodo(); });
+  if (!isNew) $("#mDel").onclick = () => withUndo(`已刪除「${b.title}」`, ["day-" + k], () => { days[k].blocks = days[k].blocks.filter(x => x.id !== b.id); saveDay(k); closeModal(); renderDay(); renderTodo(); });
   $("#mSave").onclick = () => {
     if (!timeOk()) return;
     const ds = t ? [] : pickedDays();
@@ -1289,7 +1391,7 @@ function editTask(id){
   $("#mCancel").onclick = closeModal;
   $("#mPri").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $("#mPri").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); });
   $("#mDueClr").onclick = () => { $("#mDue").value = ""; };
-  confirmBtn($("#mDel"), "再按一次刪除", () => { S.tasks = S.tasks.filter(x => x.id !== id && x.parentId !== id); saveMain(); closeModal(); renderTodo(); renderTray(); });
+  $("#mDel").onclick = () => withUndo(`已刪除「${t.title}」${subs.length ? `和 ${subs.length} 個小事項` : ""}`, ["main"], () => { S.tasks = S.tasks.filter(x => x.id !== id && x.parentId !== id); saveMain(); closeModal(); renderTodo(); renderTray(); });
   $("#mSave").onclick = () => {
     t.title = $("#mTitle").value.trim() || t.title; t.est = readDurOf("mEst");
     t.priority = ($("#mPri .on") || {}).dataset?.p || "m"; t.due = $("#mDue").value || null;
@@ -1308,7 +1410,7 @@ function editProject(pid){
     <div class="acts"><button class="btn danger" id="mDel">刪除</button><span style="display:flex;gap:8px"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mSave">儲存</button></span></div>`);
   $("#sheet").querySelector(".swatches").addEventListener("click", e => { const s = e.target.closest(".sw"); if (!s) return; color = s.dataset.c; $("#sheet").querySelectorAll(".sw").forEach(x => x.classList.toggle("on", x === s)); });
   $("#mCancel").onclick = closeModal;
-  confirmBtn($("#mDel"), "再按一次刪除", () => { S.projects = S.projects.filter(x => x.id !== pid); S.tasks = S.tasks.filter(t => t.projectId !== pid); saveMain(); closeModal(); renderTodo(); renderTray(); renderDay(); });
+  confirmBtn($("#mDel"), "再按一次刪除", () => withUndo(`已刪除專案「${p.name}」`, ["main"], () => { S.projects = S.projects.filter(x => x.id !== pid); S.tasks = S.tasks.filter(t => t.projectId !== pid); saveMain(); closeModal(); renderTodo(); renderTray(); renderDay(); }));
   $("#mSave").onclick = () => { p.name = $("#mTitle").value.trim() || p.name; p.color = color; saveMain(); closeModal(); renderTodo(); renderTray(); renderDay(); };
 }
 
@@ -1718,7 +1820,7 @@ function openGasSetup(){
           btn.textContent = `複製資料中… ${Math.min(i + 40, keys.length)}/${keys.length}`;
         }
       }
-      lsSet("blk:gas", { url, token }); try { localStorage.removeItem("blk:trial"); } catch {}
+      lsSet("blk:gas", { url, token }); try { localStorage.removeItem("blk:trial"); if (!cur.url || cur.url !== url) localStorage.removeItem("blk:outbox"); } catch {}
       closeModal(); toast(`已連接「${ping.name}」`);
       setTimeout(() => location.reload(), 600);
     } catch (e) {
@@ -1772,13 +1874,23 @@ async function startGas(cfg){
       if (k.startsWith("day-") && docs[k] && Array.isArray(docs[k].blocks)) days[k.slice(4)] = docs[k];
       else if (k.startsWith("week-") && docs[k]) weeks[k.slice(5)] = docs[k];
     });
+    Store.ver = Object.assign({}, j.vers || {});
+    Object.keys(docs).forEach(k => Store.base[k] = clone(docs[k]));
     Store.allLoaded = true;
+    const ob = lsGet("blk:outbox") || {}; let replay = 0;
+    Object.keys(ob).forEach(k => {
+      const e = ob[k], sv = k in Store.ver ? Store.ver[k] : null;
+      const doc = e.ver === sv ? e.doc : merge3(e.base, e.doc, docs[k]);
+      Store.applyDoc(k, doc); Store.pending[k] = clone(doc); replay++;
+    });
     await loadDay(ui.date);
     loaded = true; setSync("已連到你的試算表");
+    if (replay) { Store.flushGas(); toast(`補存了上次沒存到的 ${replay} 筆變更`); }
     a.classList.add("on"); a.querySelector("span").textContent = "試算表：" + (j.name || "已連線");
   } catch (e) {
     setSync(gasErr(e.code)); a.querySelector("span").textContent = "試算表連線失敗";
   }
+  Store.onChange = () => { renderAll(); if (ui.view === "habit") renderHabit(); };
   a.onclick = () => {
     openModal(`<h3>我的試算表</h3>
       <p class="fld">${info.name ? `目前連到「${esc(info.name)}」` : "目前連線失敗"}</p>
@@ -1786,7 +1898,7 @@ async function startGas(cfg){
       <div class="acts"><button class="btn danger" id="gOff">中斷連線</button><span style="display:flex;gap:8px"><button class="btn ghost" id="gEdit">修改連線</button><button class="btn ghost" id="mCancel">關閉</button></span></div>`);
     $("#mCancel").onclick = closeModal;
     $("#gEdit").onclick = openGasSetup;
-    $("#gOff").onclick = () => { Store.flushAll(); setTimeout(() => { try { localStorage.removeItem("blk:gas"); localStorage.removeItem("blk:trial"); } catch {} location.reload(); }, 800); };
+    $("#gOff").onclick = () => { Store.flushAll(); setTimeout(() => { try { localStorage.removeItem("blk:gas"); localStorage.removeItem("blk:trial"); localStorage.removeItem("blk:outbox"); } catch {} location.reload(); }, 800); };
   };
   renderAll();
 }

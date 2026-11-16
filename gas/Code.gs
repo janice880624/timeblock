@@ -24,6 +24,9 @@ function onOpen() {
     .addItem('初始設定（產生連線密碼）', 'setupFromMenu')
     .addItem('顯示連線密碼', 'showToken')
     .addSeparator()
+    .addItem('立即備份', 'backupNow')
+    .addItem('從備份還原…', 'restoreBackup')
+    .addSeparator()
     .addItem('重新產生連線密碼', 'resetToken')
     .addToUi();
 }
@@ -82,6 +85,7 @@ function setup() {
   st.getRange('A2:A3').setFontWeight('bold');
   st.getRange('B2').setFontFamily('Roboto Mono').setFontSize(13).setBackground('#fff8d6');
   st.setColumnWidth(1, 150); st.setColumnWidth(2, 520);
+  try { ensureBackupTrigger_(); } catch (e) { Logger.log('無法建立每日備份：' + e); }
   SpreadsheetApp.flush();
   Logger.log('連線密碼：' + token);
   return token;
@@ -106,22 +110,31 @@ function handle_(p) {
       case 'ping':
         return out_({ ok: true, name: ss.getName(), url: ss.getUrl(), count: Object.keys(readAll_().map).length });
       case 'getAll': {
-        const { map } = readAll_(), docs = {};
-        Object.keys(map).forEach(k => { try { docs[k] = map[k].json ? JSON.parse(map[k].json) : null; } catch (e) { docs[k] = null; } });
-        return out_({ ok: true, name: ss.getName(), url: ss.getUrl(), docs });
+        const { map } = readAll_(), docs = {}, vers = {};
+        Object.keys(map).forEach(k => { vers[k] = map[k].ver; try { docs[k] = map[k].json ? JSON.parse(map[k].json) : null; } catch (e) { docs[k] = null; } });
+        return out_({ ok: true, name: ss.getName(), url: ss.getUrl(), docs, vers });
       }
-      case 'getMany':
-        return out_({ ok: true, docs: getMany_(Array.isArray(p.keys) ? p.keys : []) });
+      case 'vers': {
+        const { map } = readAll_(), vers = {};
+        Object.keys(map).forEach(k => vers[k] = map[k].ver);
+        return out_({ ok: true, vers });
+      }
+      case 'getMany': {
+        const keys = Array.isArray(p.keys) ? p.keys : [], { map } = readAll_(), vers = {};
+        keys.forEach(k => vers[k] = map[k] ? map[k].ver : null);
+        return out_({ ok: true, docs: getMany_(keys), vers });
+      }
       case 'list':
         return out_({ ok: true, keys: Object.keys(readAll_().map) });
       case 'setMany': {
         const lock = LockService.getScriptLock();
         lock.waitLock(20000);
+        let res;
         try {
-          setMany_(p.docs || {});
-          refreshViews_(Object.keys(p.docs || {}));
+          res = setMany_(p.docs || {}, p.base || null);
+          refreshViews_(Object.keys(res.written));
         } finally { lock.releaseLock(); }
-        return out_({ ok: true });
+        return out_({ ok: true, written: res.written, conflicts: res.conflicts });
       }
       default:
         return out_({ ok: false, error: 'bad_action' });
@@ -145,10 +158,10 @@ function readAll_() {
   const sh = sheet_(), last = sh.getLastRow(), cols = Math.max(sh.getLastColumn(), 3);
   const map = {};
   if (last < 2) return { sh, map, cols };
-  const vals = sh.getRange(2, 1, last - 1, cols).getValues();
+  const vals = sh.getRange(2, 1, last - 1, cols).getDisplayValues();
   vals.forEach((r, i) => {
     if (!r[0]) return;
-    map[String(r[0])] = { row: i + 2, json: r.slice(2).join('') };
+    map[String(r[0])] = { row: i + 2, ver: String(r[1] || ''), json: r.slice(2).join('') };
   });
   return { sh, map, cols };
 }
@@ -161,12 +174,22 @@ function getMany_(keys) {
   });
   return docs;
 }
-function setMany_(docs) {
-  const all = readAll_(), sh = all.sh;
+/* base[k]＝網頁上次讀到的版本；和試算表現在的版本不同，代表別的裝置先改過，交回網頁合併 */
+function setMany_(docs, base) {
+  const all = readAll_(), sh = all.sh, written = {}, conflicts = {};
   let cols = all.cols, nextRow = Math.max(sh.getLastRow(), 1) + 1;
-  const now = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss');
+  const now = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss.SSS');
   Object.keys(docs).forEach(k => {
     if (!/^[\w.:@~+\-]{1,120}$/.test(k)) return;            // 只接受預期格式的 key
+    const cur = all.map[k];
+    if (base && Object.prototype.hasOwnProperty.call(base, k)) {
+      const known = base[k] == null ? null : String(base[k]);
+      if ((cur ? cur.ver : null) !== known && cur) {
+        let doc = null; try { doc = cur.json ? JSON.parse(cur.json) : null; } catch (e) {}
+        conflicts[k] = { ver: cur.ver, doc };
+        return;
+      }
+    }
     const json = docs[k] == null ? '' : JSON.stringify(docs[k]);
     const parts = [];
     for (let i = 0; i < json.length; i += CHUNK) parts.push(json.slice(i, i + CHUNK));
@@ -180,8 +203,10 @@ function setMany_(docs) {
     while (values.length < width) values.push('');
     sh.getRange(row, 1, 1, width).setNumberFormat('@').setValues([values]);
     cols = width;
-    all.map[k] = { row, json };
+    all.map[k] = { row, ver: now, json };
+    written[k] = now;
   });
+  return { written, conflicts };
 }
 
 /* ---------- 方便閱讀的副本 ---------- */
@@ -238,4 +263,51 @@ function writeBlocks_(dayKeys, pname) {
   keep.sort((a, b) => (a[0] + a[1]) < (b[0] + b[1]) ? -1 : 1);
   if (last > 1) sh.getRange(2, 1, last - 1, header.length).clearContent();
   if (keep.length) sh.getRange(2, 1, keep.length, header.length).setNumberFormat('@').setValues(keep);
+}
+
+/* ---------- 每日自動備份（保留 7 天） ---------- */
+const BACKUP_PREFIX = '備份 ';
+function ensureBackupTrigger_() {
+  const has = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'backupDaily');
+  if (!has) ScriptApp.newTrigger('backupDaily').timeBased().everyDays(1).atHour(3).create();
+}
+function backupDaily() { makeBackup_(Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd')); }
+function backupNow() {
+  const name = makeBackup_(Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HHmm'));
+  SpreadsheetApp.getUi().alert('已備份到隱藏工作表「' + name + '」。');
+}
+function makeBackup_(stamp) {
+  const ss = SpreadsheetApp.getActive(), src = ss.getSheetByName(DATA);
+  if (!src) return '';
+  const name = BACKUP_PREFIX + stamp;
+  const old = ss.getSheetByName(name); if (old) ss.deleteSheet(old);
+  const copy = src.copyTo(ss).setName(name);
+  copy.hideSheet();
+  const backs = ss.getSheets().filter(x => x.getName().indexOf(BACKUP_PREFIX) === 0)
+    .sort((a, b) => a.getName() < b.getName() ? 1 : -1);
+  backs.slice(10).forEach(x => ss.deleteSheet(x));          // 每日 7 份＋手動備份，最多留 10 份
+  return name;
+}
+function restoreBackup() {
+  const ui = SpreadsheetApp.getUi(), ss = SpreadsheetApp.getActive();
+  const backs = ss.getSheets().map(x => x.getName()).filter(n => n.indexOf(BACKUP_PREFIX) === 0).sort().reverse();
+  if (!backs.length) { ui.alert('還沒有任何備份。'); return; }
+  const res = ui.prompt('從備份還原', '輸入要還原的備份日期（直接複製下面其中一個）：\n\n' + backs.map(n => n.slice(BACKUP_PREFIX.length)).join('\n'), ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  const name = BACKUP_PREFIX + res.getResponseText().trim(), src = ss.getSheetByName(name);
+  if (!src) { ui.alert('找不到「' + name + '」。'); return; }
+  if (ui.alert('確定要還原「' + name + '」？', '目前的資料會先自動備份成「還原前」，再被備份內容取代。', ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    makeBackup_('還原前 ' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HHmm'));
+    const vals = src.getDataRange().getDisplayValues();
+    const now = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss.SSS');
+    for (let i = 1; i < vals.length; i++) if (vals[i][0]) vals[i][1] = now;   // 換新版本號，讓所有裝置重新讀取
+    const data = sheet_();
+    data.clearContents();
+    if (data.getMaxColumns() < vals[0].length) data.insertColumnsAfter(data.getMaxColumns(), vals[0].length - data.getMaxColumns());
+    data.getRange(1, 1, vals.length, vals[0].length).setNumberFormat('@').setValues(vals);
+    refreshViews_(['main'].concat(vals.slice(1).map(r => r[0]).filter(k => String(k).indexOf('day-') === 0)));
+  } finally { lock.releaseLock(); }
+  ui.alert('已還原。請重新整理方塊日程網頁。');
 }
