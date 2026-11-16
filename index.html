@@ -166,7 +166,7 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .mt{margin-top:12px}
 
 /* modal */
-.modal{position:fixed;inset:0;background:rgba(20,20,18,.35);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+.modal{position:fixed;inset:0;background:rgba(20,20,18,.35);display:flex;align-items:center;justify-content:center;z-index:450;padding:16px}
 .sheet{background:#fff;border-radius:16px;width:100%;max-width:420px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.2);max-height:90vh;overflow:auto}
 @media(max-width:600px){.modal{align-items:flex-end;padding:0}.sheet{border-radius:16px 16px 0 0;max-width:none}}
 .sheet h3{font-size:16px;margin-bottom:14px}
@@ -177,7 +177,7 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .sw{width:28px;height:28px;border-radius:8px;border:2px solid #fff;outline:1px solid var(--line);background:var(--c)}
 .sw.on{outline:2px solid var(--ink)}
 .sheet .acts{display:flex;justify-content:space-between;gap:8px;margin-top:6px}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13.5px;opacity:0;transition:.2s;z-index:300;pointer-events:none;white-space:nowrap}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13.5px;opacity:0;transition:.2s;z-index:500;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .wds{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
 .wd{width:36px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:13.5px;padding:0}
@@ -240,6 +240,14 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .gbtn:hover{background:#fafaf8}
 .login-err{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:1em}
 .acct{cursor:pointer}
+.login-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:14px 0}
+.login-or::before,.login-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.login-note{font-size:12px!important;color:var(--muted)!important;margin:8px 0 0!important}
+.howto{background:var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.7}
+.howto summary{cursor:pointer;font-weight:500}
+.howto ol{margin:8px 0 0;padding-left:20px}
+.howto a{color:var(--accent)}
+.fld input.mono{font-family:ui-monospace,Menlo,monospace;font-size:13.5px}
 .daterow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .daterow .fld{margin-bottom:0}
 .nodate{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px;margin-top:5px}
@@ -493,6 +501,9 @@ button.wc{cursor:pointer}
   <div class="logo">▦</div><h2>方塊日程</h2>
   <p>登入後，你的專案、方塊和週統整會存在你的帳號裡，手機、電腦都能同步。</p>
   <button class="gbtn" id="gLogin"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>使用 Google 帳號登入</button>
+  <div class="login-or">或</div>
+  <button class="gbtn" id="gasLogin"><span style="font-size:18px">📄</span>使用我自己的 Google 試算表</button>
+  <p class="login-note">資料存在你自己的雲端硬碟，需要先做一次簡單設定。</p>
   <div class="login-err" id="loginErr"></div>
 </div></div>
 <div id="modal" class="modal hidden"><div class="sheet" id="sheet"></div></div>
@@ -512,7 +523,7 @@ const firebaseConfig = {
 /* ============================================================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, doc, getDoc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const FB_READY = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "PASTE_HERE";
 (() => {
 "use strict";
@@ -544,7 +555,39 @@ function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 /* ---------- storage (account db, falls back to this browser) ---------- */
 const Store = {
   mode: "local", col: null, pending: {}, inflight: {}, timers: {},
+  gas: null, allLoaded: false, gTimer: null, gBusy: false, gAgain: false,
+  async gasCall(body){
+    let res;
+    try { res = await fetch(this.gas.url, { method: "POST", body: JSON.stringify(Object.assign({ token: this.gas.token }, body)), redirect: "follow" }); }
+    catch { throw { code: "network" }; }
+    if (!res.ok) throw { code: "http_" + res.status };
+    let j; try { j = await res.json(); } catch { throw { code: "bad_response" }; }
+    if (!j.ok) throw { code: j.error || "error" };
+    return j;
+  },
+  async flushGas(){
+    if (this.gBusy) { this.gAgain = true; return; }
+    const keys = Object.keys(this.pending); if (!keys.length) return;
+    const docs = {}; keys.forEach(k => { docs[k] = this.pending[k]; delete this.pending[k]; });
+    this.gBusy = true; let failed = false;
+    try { await this.gasCall({ action: "setMany", docs }); }
+    catch (e) {
+      failed = true;
+      keys.forEach(k => { if (!(k in this.pending)) this.pending[k] = docs[k]; });
+      toast(e.code === "bad_token" ? "連線密碼錯誤，請重新連接試算表" : "存到試算表失敗，5 秒後再試");
+      setSync("尚有變更未儲存");
+    }
+    this.gBusy = false;
+    if (failed) { clearTimeout(this.gTimer); this.gTimer = setTimeout(() => this.flushGas(), 5000); return; }
+    if (this.gAgain || Object.keys(this.pending).length) { this.gAgain = false; this.flushGas(); }
+    else setSync("已存到你的試算表");
+  },
   async load(key){
+    if (this.mode === "gas") {
+      if (this.allLoaded) return null;          // everything was read at start; a missing key simply doesn't exist yet
+      const j = await this.gasCall({ action: "getMany", keys: [key] });
+      return j.docs ? j.docs[key] ?? null : null;
+    }
     if (this.mode === "fb") {
       const snap = await getDoc(doc(this.fdb, "users", this.uid, "planner", key));
       return snap.exists() ? snap.data() : null;
@@ -553,6 +596,7 @@ const Store = {
   },
   save(key, data){
     this.pending[key] = JSON.parse(JSON.stringify(data));
+    if (this.mode === "gas") { clearTimeout(this.gTimer); this.gTimer = setTimeout(() => this.flushGas(), 700); setSync("儲存中…"); return; }
     clearTimeout(this.timers[key]);
     this.timers[key] = setTimeout(() => this.flush(key), 450);
     setSync("儲存中…");
@@ -584,7 +628,7 @@ const Store = {
     if (this.pending[key]) this.flush(key);
     else if (!Object.keys(this.pending).length && !Object.values(this.inflight).some(Boolean)) setSync(this.mode==="fb" ? "已同步到你的帳號" : "已存在此瀏覽器");
   },
-  flushAll(){ Object.keys(this.pending).forEach(k => { clearTimeout(this.timers[k]); this.flush(k); }); }
+  flushAll(){ if (this.mode === "gas") { clearTimeout(this.gTimer); this.flushGas(); return; } Object.keys(this.pending).forEach(k => { clearTimeout(this.timers[k]); this.flush(k); }); }
 };
 function setSync(t){ $("#syncState").textContent = t; }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Store.flushAll(); });
@@ -1646,6 +1690,95 @@ async function startCloud(fdb, user){
   a.title = "點一下登出";
   renderAll();
 }
+const CODE_URL = "https://github.com/janice880624/timeblock/blob/main/gas/Code.gs";
+function gasErr(code){
+  return { bad_token: "連線密碼不正確", not_setup: "試算表還沒執行 setup", network: "連不到網址，請確認部署時「誰可以存取」選了「所有人」", bad_response: "這個網址回應的不是方塊日程（網址要用 /exec 結尾的那個）" }[code] || ("連線失敗：" + code);
+}
+async function collectCurrent(){
+  const out = {};
+  if (Store.mode === "fb") {
+    const snap = await getDocs(collection(Store.fdb, "users", Store.uid, "planner"));
+    snap.forEach(d => { out[d.id] = d.data(); });
+  } else {
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("blk:") && k !== "blk:ui" && k !== "blk:gas") out[k.slice(4)] = lsGet(k); } } catch {}
+  }
+  return out;
+}
+function openGasSetup(){
+  const cur = lsGet("blk:gas") || {};
+  const canMig = loaded && (S.projects.length || S.tasks.length || recs().length);
+  openModal(`<h3>連接我自己的試算表</h3>
+    <details class="howto" ${cur.url ? "" : "open"}><summary>第一次使用？設定步驟（約 5 分鐘）</summary><ol>
+      <li>建立一份新的 Google 試算表 →「擴充功能」→「Apps Script」</li>
+      <li>把 <a href="${CODE_URL}" target="_blank" rel="noopener">Code.gs</a> 的內容全部貼上並儲存</li>
+      <li>上方函式選 <b>setup</b> → 按「執行」並授權；試算表會多一個「設定」頁，裡面有<b>連線密碼</b></li>
+      <li>「部署」→「新增部署作業」→ 類型選「網頁應用程式」，執行身分「我」、誰可以存取「所有人」→ 複製 <b>/exec</b> 結尾的網址</li>
+    </ol></details>
+    <label class="fld">網頁應用程式網址<input type="text" class="mono" id="gUrl" value="${esc(cur.url || "")}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="fld">連線密碼<input type="text" class="mono" id="gTok" value="${esc(cur.token || "")}" autocomplete="off"></label>
+    ${canMig ? `<label class="nodate" style="margin-bottom:10px"><input type="checkbox" id="gMig" checked> 把目前的資料一起複製到這個試算表</label>` : ""}
+    <p class="login-err" id="gErr"></p>
+    <div class="acts"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="gGo">連線</button></div>`);
+  $("#mCancel").onclick = closeModal;
+  $("#gGo").onclick = async () => {
+    const url = $("#gUrl").value.trim(), token = $("#gTok").value.trim(), err = $("#gErr");
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { err.textContent = "網址要是 https://script.google.com/… 開頭、/exec 結尾"; return; }
+    if (!token) { err.textContent = "請輸入連線密碼"; return; }
+    const btn = $("#gGo"); btn.disabled = true; btn.textContent = "連線中…"; err.textContent = "";
+    const prev = Store.gas; Store.gas = { url, token };
+    try {
+      const ping = await Store.gasCall({ action: "ping" });
+      if ($("#gMig") && $("#gMig").checked) {
+        if (ping.count && !btn.dataset.ok) { err.textContent = `這個試算表已經有 ${ping.count} 筆資料，複製會覆蓋同名資料。確定的話再按一次「連線」。`; btn.dataset.ok = 1; btn.disabled = false; btn.textContent = "確定複製並連線"; Store.gas = prev; return; }
+        btn.textContent = "複製資料中…";
+        Store.flushAll();
+        const docs = await collectCurrent(), keys = Object.keys(docs);
+        for (let i = 0; i < keys.length; i += 40) {
+          const part = {}; keys.slice(i, i + 40).forEach(k => part[k] = docs[k]);
+          await Store.gasCall({ action: "setMany", docs: part });
+          btn.textContent = `複製資料中… ${Math.min(i + 40, keys.length)}/${keys.length}`;
+        }
+      }
+      lsSet("blk:gas", { url, token });
+      closeModal(); toast(`已連接「${ping.name}」`);
+      setTimeout(() => location.reload(), 600);
+    } catch (e) {
+      Store.gas = prev; btn.disabled = false; btn.textContent = "連線"; err.textContent = gasErr(e.code);
+    }
+  };
+}
+async function startGas(cfg){
+  Store.mode = "gas"; Store.gas = cfg; Store.allLoaded = false;
+  resetData(); loaded = false; renderAll(); setSync("從試算表讀取中…");
+  $("#login").classList.add("hidden");
+  const a = $("#acct"); a.querySelector("span").textContent = "試算表連線中…";
+  let info = {};
+  try {
+    const j = await Store.gasCall({ action: "getAll" }); const docs = j.docs || {}; info = j;
+    if (docs.main && Array.isArray(docs.main.projects)) S = docs.main;
+    recs();
+    Object.keys(docs).forEach(k => {
+      if (k.startsWith("day-") && docs[k] && Array.isArray(docs[k].blocks)) days[k.slice(4)] = docs[k];
+      else if (k.startsWith("week-") && docs[k]) weeks[k.slice(5)] = docs[k];
+    });
+    Store.allLoaded = true;
+    await loadDay(ui.date);
+    loaded = true; setSync("已連到你的試算表");
+    a.classList.add("on"); a.querySelector("span").textContent = "試算表：" + (j.name || "已連線");
+  } catch (e) {
+    setSync(gasErr(e.code)); a.querySelector("span").textContent = "試算表連線失敗";
+  }
+  a.onclick = () => {
+    openModal(`<h3>我的試算表</h3>
+      <p class="fld">${info.name ? `目前連到「${esc(info.name)}」` : "目前連線失敗"}</p>
+      ${info.url ? `<p class="fld"><a href="${esc(info.url)}" target="_blank" rel="noopener" style="color:var(--accent)">打開試算表 ↗</a>　「待辦清單」「方塊紀錄」「固定行程」頁可以直接看資料</p>` : ""}
+      <div class="acts"><button class="btn danger" id="gOff">中斷連線</button><span style="display:flex;gap:8px"><button class="btn ghost" id="gEdit">修改連線</button><button class="btn ghost" id="mCancel">關閉</button></span></div>`);
+    $("#mCancel").onclick = closeModal;
+    $("#gEdit").onclick = openGasSetup;
+    $("#gOff").onclick = () => { Store.flushAll(); setTimeout(() => { try { localStorage.removeItem("blk:gas"); } catch {} location.reload(); }, 800); };
+  };
+  renderAll();
+}
 async function startLocal(msg){
   Store.mode = "local";
   const main = lsGet("blk:main"); if (main && Array.isArray(main.projects)) S = main; recs();
@@ -1656,6 +1789,9 @@ async function startLocal(msg){
 }
 function boot(){
   renderAll();
+  $("#gasLogin").onclick = openGasSetup;
+  const g = lsGet("blk:gas");
+  if (g && g.url && g.token) { startGas(g); return; }
   if (!FB_READY) { startLocal("尚未設定 Firebase，資料只存在此瀏覽器"); return; }
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -1674,8 +1810,9 @@ function boot(){
   $("#acct").onclick = () => {
     if (!auth.currentUser) return;
     openModal(`<h3>帳號</h3><p class="fld">目前登入：${esc(auth.currentUser.email || auth.currentUser.displayName || "")}</p>
-      <div class="acts"><button class="btn danger" id="mOut">登出</button><button class="btn ghost" id="mCancel">關閉</button></div>`);
+      <div class="acts"><button class="btn danger" id="mOut">登出</button><span style="display:flex;gap:8px"><button class="btn ghost" id="mToGas">改用自己的試算表</button><button class="btn ghost" id="mCancel">關閉</button></span></div>`);
     $("#mCancel").onclick = closeModal;
+    $("#mToGas").onclick = openGasSetup;
     $("#mOut").onclick = async () => { Store.flushAll(); await new Promise(r => setTimeout(r, 300)); await signOut(auth); closeModal(); };
   };
   onAuthStateChanged(auth, user => {
