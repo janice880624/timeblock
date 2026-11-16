@@ -1,0 +1,9 @@
+{
+  "name": "timeblock",
+  "private": true,
+  "description": "方塊日程：拖拉方塊的個人管理系統",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "mock": "node tests/mock-gas-server.js 8787"
+  }
+}

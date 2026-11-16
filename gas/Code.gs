@@ -24,6 +24,7 @@ function onOpen() {
     .addItem('初始設定（產生連線密碼）', 'setupFromMenu')
     .addItem('顯示連線密碼', 'showToken')
     .addSeparator()
+    .addItem('立即更新閱讀用工作表', 'refreshAllViews')
     .addItem('立即備份', 'backupNow')
     .addItem('從備份還原…', 'restoreBackup')
     .addSeparator()
@@ -86,6 +87,7 @@ function setup() {
   st.getRange('B2').setFontFamily('Roboto Mono').setFontSize(13).setBackground('#fff8d6');
   st.setColumnWidth(1, 150); st.setColumnWidth(2, 520);
   try { ensureBackupTrigger_(); } catch (e) { Logger.log('無法建立每日備份：' + e); }
+  try { ensureViewTrigger_(); } catch (e) { Logger.log('無法建立定時更新：' + e); }
   SpreadsheetApp.flush();
   Logger.log('連線密碼：' + token);
   return token;
@@ -107,16 +109,24 @@ function handle_(p) {
     if (p.token !== token) return out_({ ok: false, error: 'bad_token' });
     const ss = SpreadsheetApp.getActive();
     switch (p.action) {
-      case 'ping':
-        return out_({ ok: true, name: ss.getName(), url: ss.getUrl(), count: Object.keys(readAll_().map).length });
+      case 'ping': {
+        const keys = Object.keys(readIndex_());
+        return out_({ ok: true, name: ss.getName(), url: ss.getUrl(), count: keys.length, keys });
+      }
+      case 'migrateDays': {
+        const lock = LockService.getScriptLock(); lock.waitLock(30000);
+        let moved = 0;
+        try { moved = migrateDays_(); } finally { lock.releaseLock(); }
+        return out_({ ok: true, moved });
+      }
       case 'getAll': {
         const { map } = readAll_(), docs = {}, vers = {};
         Object.keys(map).forEach(k => { vers[k] = map[k].ver; try { docs[k] = map[k].json ? JSON.parse(map[k].json) : null; } catch (e) { docs[k] = null; } });
         return out_({ ok: true, name: ss.getName(), url: ss.getUrl(), docs, vers });
       }
       case 'vers': {
-        const { map } = readAll_(), vers = {};
-        Object.keys(map).forEach(k => vers[k] = map[k].ver);
+        const idx = readIndex_(), vers = {};
+        Object.keys(idx).forEach(k => vers[k] = idx[k].ver);
         return out_({ ok: true, vers });
       }
       case 'getMany': {
@@ -132,7 +142,7 @@ function handle_(p) {
         let res;
         try {
           res = setMany_(p.docs || {}, p.base || null);
-          refreshViews_(Object.keys(res.written));
+          queueViews_(Object.keys(res.written));
         } finally { lock.releaseLock(); }
         return out_({ ok: true, written: res.written, conflicts: res.conflicts });
       }
@@ -153,6 +163,13 @@ function sheet_() {
   let sh = ss.getSheetByName(DATA);
   if (!sh) { setup(); sh = ss.getSheetByName(DATA); }
   return sh;
+}
+/* 只讀 A、B 欄（key、版本），不讀內容，查版本時很快 */
+function readIndex_() {
+  const sh = sheet_(), last = sh.getLastRow(), idx = {};
+  if (last < 2) return idx;
+  sh.getRange(2, 1, last - 1, 2).getDisplayValues().forEach((r, i) => { if (r[0]) idx[String(r[0])] = { row: i + 2, ver: String(r[1] || '') }; });
+  return idx;
 }
 function readAll_() {
   const sh = sheet_(), last = sh.getLastRow(), cols = Math.max(sh.getLastColumn(), 3);
@@ -209,15 +226,81 @@ function setMany_(docs, base) {
   return { written, conflicts };
 }
 
+/* ---------- 舊格式（每天一列）轉成每月一列 ---------- */
+function migrateDays_() {
+  const all = readAll_(), groups = {};
+  Object.keys(all.map).forEach(k => {
+    if (k.indexOf('day-') !== 0) return;
+    const K = k.slice(4), ym = K.slice(0, 7);
+    let d = null; try { d = all.map[k].json ? JSON.parse(all.map[k].json) : null; } catch (e) {}
+    if (!d) return;
+    (groups[ym] = groups[ym] || {})[K] = d;
+  });
+  const yms = Object.keys(groups);
+  if (!yms.length) return 0;
+  makeBackup_('格式轉換前 ' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HHmm'));
+  const docs = {};
+  yms.forEach(ym => {
+    const key = 'month-' + ym;
+    let cur = { days: {} };
+    if (all.map[key]) { try { cur = JSON.parse(all.map[key].json) || cur; } catch (e) {} }
+    cur.days = cur.days || {};
+    Object.keys(groups[ym]).forEach(K => { if (!cur.days[K]) cur.days[K] = groups[ym][K]; });
+    docs[key] = cur;
+  });
+  setMany_(docs, null);
+  const sh = sheet_(), last = sh.getLastRow(), cols = sh.getLastColumn();
+  const vals = sh.getRange(1, 1, last, cols).getDisplayValues();
+  const keep = vals.filter((r, i) => i === 0 || String(r[0]).indexOf('day-') !== 0);
+  sh.getRange(1, 1, last, cols).clearContent();
+  sh.getRange(1, 1, keep.length, cols).setNumberFormat('@').setValues(keep);
+  queueViews_(['main'].concat(Object.keys(docs)));
+  return yms.length;
+}
+
+/* ---------- 方便閱讀的副本：每 10 分鐘整批更新，不拖慢每次儲存 ---------- */
+function ensureViewTrigger_() {
+  const has = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'refreshViewsJob');
+  if (!has) ScriptApp.newTrigger('refreshViewsJob').timeBased().everyMinutes(10).create();
+  PropertiesService.getScriptProperties().setProperty('VIEW_TRIGGER', '1');
+}
+function queueViews_(keys) {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('VIEW_TRIGGER') !== '1') { refreshViews_(keys); return; }   // 還沒設定定時更新的舊試算表：照舊立即更新
+  const cur = JSON.parse(props.getProperty('DIRTY') || '[]');
+  keys.forEach(k => { if (cur.indexOf(k) < 0) cur.push(k); });
+  props.setProperty('DIRTY', JSON.stringify(cur.slice(-300)));
+}
+function refreshViewsJob() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const keys = JSON.parse(props.getProperty('DIRTY') || '[]');
+    if (!keys.length) return;
+    props.deleteProperty('DIRTY');
+    refreshViews_(keys);
+  } finally { lock.releaseLock(); }
+}
+function refreshAllViews() {
+  refreshViews_(Object.keys(readIndex_()));
+  SpreadsheetApp.getUi().alert('已更新「待辦清單」「方塊紀錄」「固定行程」。');
+}
+
 /* ---------- 方便閱讀的副本 ---------- */
 function refreshViews_(changed) {
-  const needMain = changed.indexOf('main') >= 0;
-  const dayKeys = changed.filter(k => k.indexOf('day-') === 0);
-  if (!needMain && !dayKeys.length) return;
+  const needMain = changed.some(k => k === 'main' || k.indexOf('archive-') === 0);
+  const monthKeys = changed.filter(k => k.indexOf('month-') === 0);
+  if (!needMain && !monthKeys.length) return;
   const main = getMany_(['main']).main || { projects: [], tasks: [], recurring: [] };
   const pname = id => { const p = (main.projects || []).find(x => x.id === id); return p ? p.name : ''; };
-  if (needMain) { writeTasks_(main, pname); writeRecurring_(main, pname); }
-  if (dayKeys.length) writeBlocks_(dayKeys, pname);
+  if (needMain) {
+    const archKeys = Object.keys(readIndex_()).filter(k => k.indexOf('archive-') === 0);
+    const arch = getMany_(archKeys), archived = [];
+    archKeys.forEach(k => ((arch[k] && arch[k].tasks) || []).forEach(t => archived.push(t)));
+    writeTasks_(main, pname, archived); writeRecurring_(main, pname);
+  }
+  if (monthKeys.length) writeBlocks_(monthKeys, pname);
 }
 function view_(name, header) {
   const ss = SpreadsheetApp.getActive();
@@ -228,13 +311,14 @@ function view_(name, header) {
 const PRI_ = { h: '高', m: '中', l: '低' };
 const hm_ = m => { m = Number(m) || 0; return m % 60 ? Math.floor(m / 60) + ':' + ('0' + m % 60).slice(-2) : (m / 60) + ':00'; };
 const time_ = m => ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + m % 60).slice(-2);
-function writeTasks_(main, pname) {
-  const header = ['專案', '待辦', '上層待辦', '優先度', '截止日', '預估時間', '完成', '完成時間'];
+function writeTasks_(main, pname, archived) {
+  const header = ['專案', '待辦', '上層待辦', '優先度', '截止日', '預估時間', '完成', '完成時間', '已封存'];
   const sh = view_('待辦清單', header);
-  const tasks = main.tasks || [];
+  if (sh.getRange(1, 9).getValue() !== '已封存') sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
+  const tasks = (main.tasks || []).concat((archived || []).map(t => Object.assign({ _arch: true }, t)));
   const title = id => { const t = tasks.find(x => x.id === id); return t ? t.title : ''; };
   const rows = tasks.map(t => [pname(t.projectId), t.title, t.parentId ? title(t.parentId) : '', PRI_[t.priority] || '中',
-    t.due || '', hm_(t.est || 30), t.done ? '✓' : '', t.doneAt ? Utilities.formatDate(new Date(t.doneAt), TZ, 'yyyy-MM-dd HH:mm') : '']);
+    t.due || '', hm_(t.est || 30), t.done ? '✓' : '', t.doneAt ? Utilities.formatDate(new Date(t.doneAt), TZ, 'yyyy-MM-dd HH:mm') : '', t._arch ? '✓' : '']);
   sh.getRange(2, 1, Math.max(sh.getMaxRows() - 1, 1), header.length).clearContent();
   if (rows.length) sh.getRange(2, 1, rows.length, header.length).setNumberFormat('@').setValues(rows);
 }
@@ -247,18 +331,21 @@ function writeRecurring_(main, pname) {
   sh.getRange(2, 1, Math.max(sh.getMaxRows() - 1, 1), header.length).clearContent();
   if (rows.length) sh.getRange(2, 1, rows.length, header.length).setNumberFormat('@').setValues(rows);
 }
-function writeBlocks_(dayKeys, pname) {
+function writeBlocks_(monthKeys, pname) {
   const header = ['日期', '開始', '結束', '方塊', '專案', '完成'];
   const sh = view_('方塊紀錄', header);
-  const dates = dayKeys.map(k => k.slice(4));
+  const yms = monthKeys.map(k => k.slice(6));
   const last = sh.getLastRow();
   let keep = last > 1 ? sh.getRange(2, 1, last - 1, header.length).getDisplayValues() : [];
-  keep = keep.filter(r => r[0] && dates.indexOf(r[0]) < 0);
-  const docs = getMany_(dayKeys);
-  dayKeys.forEach(k => {
-    const d = docs[k]; if (!d || !d.blocks) return;
-    d.blocks.slice().sort((a, b) => a.start - b.start).forEach(b =>
-      keep.push([k.slice(4), time_(b.start), time_(b.start + b.dur), b.title, pname(b.projectId), b.done ? '✓' : '']));
+  keep = keep.filter(r => r[0] && yms.indexOf(String(r[0]).slice(0, 7)) < 0);
+  const docs = getMany_(monthKeys);
+  monthKeys.forEach(k => {
+    const m = docs[k]; if (!m || !m.days) return;
+    Object.keys(m.days).sort().forEach(K => {
+      const d = m.days[K]; if (!d || !d.blocks) return;
+      d.blocks.slice().sort((a, b) => a.start - b.start).forEach(b =>
+        keep.push([K, time_(b.start), time_(b.start + b.dur), b.title, pname(b.projectId), b.done ? '✓' : '']));
+    });
   });
   keep.sort((a, b) => (a[0] + a[1]) < (b[0] + b[1]) ? -1 : 1);
   if (last > 1) sh.getRange(2, 1, last - 1, header.length).clearContent();
@@ -307,7 +394,7 @@ function restoreBackup() {
     data.clearContents();
     if (data.getMaxColumns() < vals[0].length) data.insertColumnsAfter(data.getMaxColumns(), vals[0].length - data.getMaxColumns());
     data.getRange(1, 1, vals.length, vals[0].length).setNumberFormat('@').setValues(vals);
-    refreshViews_(['main'].concat(vals.slice(1).map(r => r[0]).filter(k => String(k).indexOf('day-') === 0)));
+    refreshViews_(vals.slice(1).map(r => String(r[0])).filter(Boolean));
   } finally { lock.releaseLock(); }
   ui.alert('已還原。請重新整理方塊日程網頁。');
 }
