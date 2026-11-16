@@ -2,13 +2,13 @@
  * 方塊日程 · 個人試算表後端（Google Apps Script）
  *
  * 使用方式（每個人做一次）：
- *  1. 建立一份新的 Google 試算表 →「擴充功能」→「Apps Script」，把這個檔案的內容整個貼上並儲存。
- *  2. 在上方選單選 setup → 按「執行」，第一次會要求授權（選自己的帳號 → 進階 → 前往專案 → 允許）。
- *     執行完，試算表會多出「設定」工作表，裡面有你的「連線密碼」。
- *  3. 右上角「部署」→「新增部署作業」→ 類型選「網頁應用程式」
+ *  1. 複製範本試算表（或建立新試算表 →「擴充功能」→「Apps Script」，貼上這個檔案）。
+ *  2. 試算表上方選單「方塊日程」→「初始設定」，第一次會要求授權。
+ *     完成後「設定」工作表會出現你的「連線密碼」。
+ *  3. 「擴充功能」→「Apps Script」→「部署」→「新增部署作業」→ 類型選「網頁應用程式」
  *       執行身分：我　／　誰可以存取：所有人
  *     按「部署」，複製「網頁應用程式網址」（結尾是 /exec）。
- *  4. 打開方塊日程網頁 →「使用我自己的試算表」，貼上網址與連線密碼。
+ *  4. 打開方塊日程網頁 →「連接我的 Google 試算表」，貼上網址與連線密碼。
  *
  * 資料存在「data」工作表（請勿手動修改）。
  * 「待辦清單」「方塊紀錄」「固定行程」是方便閱讀的副本，每次儲存會自動更新，在這裡修改不會同步回網頁。
@@ -18,14 +18,51 @@ const DATA = 'data';
 const CHUNK = 45000;            // 單一儲存格上限 50,000 字元，留一點空間
 const TZ = Session.getScriptTimeZone() || 'Asia/Taipei';
 
+/* ---------- 試算表選單 ---------- */
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('方塊日程')
+    .addItem('初始設定（產生連線密碼）', 'setupFromMenu')
+    .addItem('顯示連線密碼', 'showToken')
+    .addSeparator()
+    .addItem('重新產生連線密碼', 'resetToken')
+    .addToUi();
+}
+function setupFromMenu() {
+  const token = setup();
+  SpreadsheetApp.getUi().alert('設定完成',
+    '你的連線密碼：' + token + '\n\n下一步：「擴充功能」→「Apps Script」→「部署」→「新增部署作業」→ 網頁應用程式（執行身分：我／誰可以存取：所有人），複製 /exec 結尾的網址，和密碼一起貼到方塊日程網頁。',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+function showToken() {
+  const token = currentToken_();
+  SpreadsheetApp.getUi().alert(token ? '你的連線密碼：' + token : '還沒有連線密碼，請先執行「初始設定」。');
+}
+function resetToken() {
+  const ui = SpreadsheetApp.getUi();
+  if (ui.alert('重新產生連線密碼？', '舊密碼會失效，所有裝置都要重新輸入新密碼。', ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
+  PropertiesService.getScriptProperties().deleteProperty('TOKEN');
+  const token = setup();
+  ui.alert('新的連線密碼：' + token);
+}
+/* 密碼綁定這份試算表：從範本複製的副本不會沿用範本的密碼 */
+function currentToken_() {
+  const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('TOKEN'), id = SpreadsheetApp.getActive().getId();
+  if (!token) return null;
+  const owner = props.getProperty('TOKEN_SS');
+  if (!owner) { props.setProperty('TOKEN_SS', id); return token; }   // 舊版設定過的試算表：沿用原本的密碼
+  return owner === id ? token : null;
+}
+
 /* ---------- 一次性設定 ---------- */
 function setup() {
   const ss = SpreadsheetApp.getActive();
   const props = PropertiesService.getScriptProperties();
-  let token = props.getProperty('TOKEN');
+  let token = currentToken_();
   if (!token) {
     token = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
     props.setProperty('TOKEN', token);
+    props.setProperty('TOKEN_SS', ss.getId());
   }
   const data = ss.getSheetByName(DATA) || ss.insertSheet(DATA);
   if (data.getLastRow() === 0) data.getRange(1, 1, 1, 3).setValues([['key', 'updatedAt', 'json（請勿修改）']]);
@@ -39,7 +76,7 @@ function setup() {
     ['網頁應用程式網址', '部署後，把 /exec 結尾的網址貼在這裡備忘（非必要）'],
     ['', ''],
     ['說明', '在方塊日程網頁選「使用我自己的試算表」，貼上網址與連線密碼即可。'],
-    ['', '想換密碼：清除專案屬性 TOKEN 後再執行一次 setup，網頁上也要重新輸入。'],
+    ['', '想換密碼：上方選單「方塊日程」→「重新產生連線密碼」，網頁上也要重新輸入。'],
   ]);
   st.getRange('A1').setFontWeight('bold').setFontSize(14);
   st.getRange('A2:A3').setFontWeight('bold');
@@ -47,6 +84,7 @@ function setup() {
   st.setColumnWidth(1, 150); st.setColumnWidth(2, 520);
   SpreadsheetApp.flush();
   Logger.log('連線密碼：' + token);
+  return token;
 }
 
 /* ---------- 網頁 API ---------- */
@@ -60,7 +98,7 @@ function doPost(e) {
 }
 function handle_(p) {
   try {
-    const token = PropertiesService.getScriptProperties().getProperty('TOKEN');
+    const token = currentToken_();
     if (!token) return out_({ ok: false, error: 'not_setup' });
     if (p.token !== token) return out_({ ok: false, error: 'bad_token' });
     const ss = SpreadsheetApp.getActive();

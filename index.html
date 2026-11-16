@@ -242,6 +242,12 @@ textarea.note{display:block;width:100%;min-height:110px;border:1px solid var(--l
 .acct{cursor:pointer}
 .login-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:14px 0}
 .login-or::before,.login-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.gbtn.primary{background:var(--ink);color:#fff;border-color:var(--ink);margin-bottom:8px}
+.gbtn.primary:hover{background:#000}
+a.gbtn{text-decoration:none;color:var(--ink);font-size:14px}
+.linkbtn{border:none;background:none;color:var(--muted);font-size:12.5px;margin-top:14px;text-decoration:underline;text-underline-offset:3px}
+.oldfb{margin-top:10px;font-size:12px;color:var(--muted);text-align:center}
+.oldfb button{border:none;background:none;color:var(--muted);text-decoration:underline;font-size:12px;padding:0}
 .login-note{font-size:12px!important;color:var(--muted)!important;margin:8px 0 0!important}
 .howto{background:var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.7}
 .howto summary{cursor:pointer;font-weight:500}
@@ -499,18 +505,17 @@ button.wc{cursor:pointer}
 
 <div id="login" class="login hidden"><div class="login-card">
   <div class="logo">▦</div><h2>方塊日程</h2>
-  <p>登入後，你的專案、方塊和週統整會存在你的帳號裡，手機、電腦都能同步。</p>
-  <button class="gbtn" id="gLogin"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>使用 Google 帳號登入</button>
-  <div class="login-or">或</div>
-  <button class="gbtn" id="gasLogin"><span style="font-size:18px">📄</span>使用我自己的 Google 試算表</button>
-  <p class="login-note">資料存在你自己的雲端硬碟，需要先做一次簡單設定。</p>
+  <p>你的專案、方塊和週統整會存在<b>你自己的 Google 試算表</b>，只有你看得到，手機、電腦都能同步。</p>
+  <button class="gbtn primary" id="gasLogin"><span style="font-size:18px">📄</span>連接我的 Google 試算表</button>
+  <a class="gbtn" id="tplLink" href="https://docs.google.com/spreadsheets/d/19JEZJzrM6RGVGR918iubUGKpUoQCeix7lGUA5LwTd_s/copy" target="_blank" rel="noopener">還沒有試算表？先複製範本 ↗</a>
+  <button class="linkbtn" id="tryLocal">先試用看看（資料只存在這台裝置）</button>
   <div class="login-err" id="loginErr"></div>
 </div></div>
 <div id="modal" class="modal hidden"><div class="sheet" id="sheet"></div></div>
 <div id="toast"></div>
 
 <script type="module">
-/* ====== 1) 把 Firebase 後台給你的 firebaseConfig 貼在這裡 ====== */
+/* 舊版 Google 登入（Firebase）只用來把舊資料搬到試算表，平常不會載入 */
 const firebaseConfig = {
   apiKey: "AIzaSyDC5IQZiYhiUonGIPtKAzRBfaqzlbl1K1c",
   authDomain: "timeblock-janice.firebaseapp.com",
@@ -520,11 +525,13 @@ const firebaseConfig = {
   appId: "1:1070313389626:web:b4bc84454959bbd41bbf03",
   measurementId: "G-MSM9D1NKLV"
 };
-/* ============================================================== */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, doc, getDoc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const FB_READY = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "PASTE_HERE";
+const FBV = "https://www.gstatic.com/firebasejs/10.12.2/";
+let FB = null;
+async function loadFB(){
+  if (FB) return FB;
+  const [a, b, c] = await Promise.all([import(FBV + "firebase-app.js"), import(FBV + "firebase-auth.js"), import(FBV + "firebase-firestore.js")]);
+  return (FB = Object.assign({}, a, b, c));
+}
 (() => {
 "use strict";
 /* ---------- constants & helpers ---------- */
@@ -588,10 +595,6 @@ const Store = {
       const j = await this.gasCall({ action: "getMany", keys: [key] });
       return j.docs ? j.docs[key] ?? null : null;
     }
-    if (this.mode === "fb") {
-      const snap = await getDoc(doc(this.fdb, "users", this.uid, "planner", key));
-      return snap.exists() ? snap.data() : null;
-    }
     return lsGet("blk:" + key);
   },
   save(key, data){
@@ -606,8 +609,7 @@ const Store = {
     const d = this.pending[key]; if (!d) return;
     delete this.pending[key]; this.inflight[key] = true;
     try {
-      if (this.mode === "fb") await setDoc(doc(this.fdb, "users", this.uid, "planner", key), d);
-      else lsSet("blk:" + key, d);
+      lsSet("blk:" + key, d);
     } catch (e) {
       const code = e && e.code;
       if ((code === "unavailable" || code === "deadline-exceeded") && !retried) {
@@ -616,9 +618,7 @@ const Store = {
         setTimeout(() => this.flush(key, true), 800 + Math.random()*900);
         return;
       }
-      if (code === "resource-exhausted") toast("今天的免費用量已滿，明天會恢復");
-      else if (code === "permission-denied") toast("沒有寫入權限，請檢查 Firestore 規則");
-      else toast("儲存失敗，稍後會再試");
+      toast("儲存失敗，稍後會再試");
       if (!this.pending[key]) this.pending[key] = d;
       this.inflight[key] = false;
       setSync("尚有變更未儲存");
@@ -626,7 +626,7 @@ const Store = {
     }
     this.inflight[key] = false;
     if (this.pending[key]) this.flush(key);
-    else if (!Object.keys(this.pending).length && !Object.values(this.inflight).some(Boolean)) setSync(this.mode==="fb" ? "已同步到你的帳號" : "已存在此瀏覽器");
+    else if (!Object.keys(this.pending).length && !Object.values(this.inflight).some(Boolean)) setSync("已存在此瀏覽器");
   },
   flushAll(){ if (this.mode === "gas") { clearTimeout(this.gTimer); this.flushGas(); return; } Object.keys(this.pending).forEach(k => { clearTimeout(this.timers[k]); this.flush(k); }); }
 };
@@ -1669,37 +1669,13 @@ async function renderMonth(){
 /* ---------- boot (Firebase Google sign-in) ---------- */
 function renderAll(){ setView(ui.view); renderTodo(); }
 function resetData(){ S = { projects: [], tasks: [] }; for (const k in days) delete days[k]; for (const k in weeks) delete weeks[k]; lastScrolledFor = null; }
-async function startCloud(fdb, user){
-  Store.mode = "fb"; Store.fdb = fdb; Store.uid = user.uid;
-  resetData(); loaded = false; renderAll(); setSync("讀取中…");
-  const timer = setTimeout(() => setSync("連線較慢，資料可能還沒載入完"), 10000);
-  try {
-    const main = await Store.load("main");
-    if (main && Array.isArray(main.projects)) S = main;
-    recs();
-    await loadDay(ui.date);
-    clearTimeout(timer);
-    loaded = true; setSync("已同步到你的帳號");
-  } catch (e) {
-    clearTimeout(timer);
-    setSync(e && e.code === "permission-denied" ? "讀取被拒，請檢查 Firestore 規則" : "讀取失敗，請重新整理");
-    return;
-  }
-  const a = $("#acct"); a.classList.add("on");
-  a.querySelector("span").textContent = user.displayName || user.email || "已登入";
-  a.title = "點一下登出";
-  renderAll();
-}
 const CODE_URL = "https://github.com/janice880624/timeblock/blob/main/gas/Code.gs";
 function gasErr(code){
   return { bad_token: "連線密碼不正確", not_setup: "試算表還沒執行 setup", network: "連不到網址，請確認部署時「誰可以存取」選了「所有人」", bad_response: "這個網址回應的不是方塊日程（網址要用 /exec 結尾的那個）" }[code] || ("連線失敗：" + code);
 }
 async function collectCurrent(){
   const out = {};
-  if (Store.mode === "fb") {
-    const snap = await getDocs(collection(Store.fdb, "users", Store.uid, "planner"));
-    snap.forEach(d => { out[d.id] = d.data(); });
-  } else {
+  {
     try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("blk:") && k !== "blk:ui" && k !== "blk:gas") out[k.slice(4)] = lsGet(k); } } catch {}
   }
   return out;
@@ -1708,18 +1684,21 @@ function openGasSetup(){
   const cur = lsGet("blk:gas") || {};
   const canMig = loaded && (S.projects.length || S.tasks.length || recs().length);
   openModal(`<h3>連接我自己的試算表</h3>
-    <details class="howto" ${cur.url ? "" : "open"}><summary>第一次使用？設定步驟（約 5 分鐘）</summary><ol>
-      <li>建立一份新的 Google 試算表 →「擴充功能」→「Apps Script」</li>
-      <li>把 <a href="${CODE_URL}" target="_blank" rel="noopener">Code.gs</a> 的內容全部貼上並儲存</li>
-      <li>上方函式選 <b>setup</b> → 按「執行」並授權；試算表會多一個「設定」頁，裡面有<b>連線密碼</b></li>
-      <li>「部署」→「新增部署作業」→ 類型選「網頁應用程式」，執行身分「我」、誰可以存取「所有人」→ 複製 <b>/exec</b> 結尾的網址</li>
+    <details class="howto" ${cur.url ? "" : "open"}><summary>第一次使用？設定步驟（約 3 分鐘）</summary><ol>
+      <li><a href="https://docs.google.com/spreadsheets/d/19JEZJzrM6RGVGR918iubUGKpUoQCeix7lGUA5LwTd_s/copy" target="_blank" rel="noopener">複製範本試算表 ↗</a>（按「建立副本」）</li>
+      <li>在你的副本上方選單「<b>方塊日程</b>」→「<b>初始設定</b>」，第一次會要求授權（選自己的帳號 →「進階」→「前往」→「允許」）。完成後「設定」頁會出現<b>連線密碼</b></li>
+      <li>「擴充功能」→「Apps Script」→ 右上「部署」→「新增部署作業」→ 類型選「網頁應用程式」，執行身分「我」、誰可以存取「所有人」→ 按「部署」，複製 <b>/exec</b> 結尾的網址</li>
+      <li>把網址和連線密碼貼到下面</li>
     </ol></details>
     <label class="fld">網頁應用程式網址<input type="text" class="mono" id="gUrl" value="${esc(cur.url || "")}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
     <label class="fld">連線密碼<input type="text" class="mono" id="gTok" value="${esc(cur.token || "")}" autocomplete="off"></label>
     ${canMig ? `<label class="nodate" style="margin-bottom:10px"><input type="checkbox" id="gMig" checked> 把目前的資料一起複製到這個試算表</label>` : ""}
     <p class="login-err" id="gErr"></p>
-    <div class="acts"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="gGo">連線</button></div>`);
+    <div class="acts"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="gGo">連線</button></div>
+    <div class="oldfb">之前用 Google 帳號登入過？填好網址和密碼後，<button id="gOld">從舊的 Google 帳號搬資料</button></div>`);
   $("#mCancel").onclick = closeModal;
+  loadFB().catch(() => {});                          // preload so the sign-in popup opens right on the click
+  $("#gOld").onclick = () => migrateFromFirebase();
   $("#gGo").onclick = async () => {
     const url = $("#gUrl").value.trim(), token = $("#gTok").value.trim(), err = $("#gErr");
     if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { err.textContent = "網址要是 https://script.google.com/… 開頭、/exec 結尾"; return; }
@@ -1739,13 +1718,45 @@ function openGasSetup(){
           btn.textContent = `複製資料中… ${Math.min(i + 40, keys.length)}/${keys.length}`;
         }
       }
-      lsSet("blk:gas", { url, token });
+      lsSet("blk:gas", { url, token }); try { localStorage.removeItem("blk:trial"); } catch {}
       closeModal(); toast(`已連接「${ping.name}」`);
       setTimeout(() => location.reload(), 600);
     } catch (e) {
       Store.gas = prev; btn.disabled = false; btn.textContent = "連線"; err.textContent = gasErr(e.code);
     }
   };
+}
+async function migrateFromFirebase(){
+  const url = $("#gUrl").value.trim(), token = $("#gTok").value.trim(), err = $("#gErr");
+  if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url) || !token) { err.textContent = "請先填好試算表網址和連線密碼"; return; }
+  if (!FB) { err.textContent = "載入中，請再按一次"; loadFB().catch(() => {}); return; }
+  const F = FB, btn = $("#gOld");
+  let app; try { app = F.getApp("old"); } catch { app = F.initializeApp(firebaseConfig, "old"); }
+  const auth = F.getAuth(app);
+  let cred;
+  try { cred = await F.signInWithPopup(auth, new F.GoogleAuthProvider()); }      // must run first, straight from the click
+  catch (e) { err.textContent = e.code === "auth/popup-blocked" ? "瀏覽器擋住了登入視窗，請允許彈出視窗後再試" : "Google 登入失敗：" + (e.code || e.message); return; }
+  const prev = Store.gas; Store.gas = { url, token };
+  try {
+    btn.textContent = "連線試算表中…";
+    await Store.gasCall({ action: "ping" });
+    btn.textContent = "讀取舊資料中…";
+    const snap = await F.getDocs(F.collection(F.getFirestore(app), "users", cred.user.uid, "planner"));
+    const docs = {}; snap.forEach(d => { docs[d.id] = d.data(); });
+    const keys = Object.keys(docs);
+    if (!keys.length) { err.textContent = "這個 Google 帳號沒有舊資料"; Store.gas = prev; btn.textContent = "從舊的 Google 帳號搬資料"; return; }
+    for (let i = 0; i < keys.length; i += 40) {
+      const part = {}; keys.slice(i, i + 40).forEach(k => part[k] = docs[k]);
+      await Store.gasCall({ action: "setMany", docs: part });
+      btn.textContent = `搬資料中… ${Math.min(i + 40, keys.length)}/${keys.length}`;
+    }
+    try { await F.signOut(auth); } catch {}
+    lsSet("blk:gas", { url, token });
+    closeModal(); toast(`已搬好 ${keys.length} 筆資料`);
+    setTimeout(() => location.reload(), 700);
+  } catch (e) {
+    Store.gas = prev; btn.textContent = "從舊的 Google 帳號搬資料"; err.textContent = e.code && !String(e.code).startsWith("permission") ? gasErr(e.code) : "讀取舊資料失敗：" + (e.code || e.message);
+  }
 }
 async function startGas(cfg){
   Store.mode = "gas"; Store.gas = cfg; Store.allLoaded = false;
@@ -1775,7 +1786,7 @@ async function startGas(cfg){
       <div class="acts"><button class="btn danger" id="gOff">中斷連線</button><span style="display:flex;gap:8px"><button class="btn ghost" id="gEdit">修改連線</button><button class="btn ghost" id="mCancel">關閉</button></span></div>`);
     $("#mCancel").onclick = closeModal;
     $("#gEdit").onclick = openGasSetup;
-    $("#gOff").onclick = () => { Store.flushAll(); setTimeout(() => { try { localStorage.removeItem("blk:gas"); } catch {} location.reload(); }, 800); };
+    $("#gOff").onclick = () => { Store.flushAll(); setTimeout(() => { try { localStorage.removeItem("blk:gas"); localStorage.removeItem("blk:trial"); } catch {} location.reload(); }, 800); };
   };
   renderAll();
 }
@@ -1784,42 +1795,21 @@ async function startLocal(msg){
   const main = lsGet("blk:main"); if (main && Array.isArray(main.projects)) S = main; recs();
   await loadDay(ui.date);
   loaded = true; setSync(msg);
-  $("#acct").querySelector("span").textContent = "未登入 · 本機模式";
+  $("#acct").querySelector("span").textContent = "本機試用 · 點此連接試算表";
+  $("#acct").onclick = openGasSetup;
   renderAll();
 }
 function boot(){
   renderAll();
   $("#gasLogin").onclick = openGasSetup;
+  $("#tryLocal").onclick = () => { lsSet("blk:trial", 1); $("#login").classList.add("hidden"); startLocal("本機試用：資料只存在這台裝置"); };
   const g = lsGet("blk:gas");
   if (g && g.url && g.token) { startGas(g); return; }
-  if (!FB_READY) { startLocal("尚未設定 Firebase，資料只存在此瀏覽器"); return; }
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  let fdb; try { fdb = initializeFirestore(app, { localCache: persistentLocalCache() }); } catch { fdb = getFirestore(app); }
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-  getRedirectResult(auth).catch(e => { $("#loginErr").textContent = "登入失敗：" + (e.code || e.message); });
-  $("#gLogin").onclick = async () => {
-    $("#loginErr").textContent = "";
-    try { await signInWithPopup(auth, provider); }
-    catch (e) {
-      if (["auth/popup-blocked", "auth/operation-not-supported-in-this-environment", "auth/cancelled-popup-request"].includes(e.code)) signInWithRedirect(auth, provider);
-      else if (e.code !== "auth/popup-closed-by-user") $("#loginErr").textContent = e.code === "auth/unauthorized-domain" ? "這個網址還沒加入 Firebase 的授權網域" : "登入失敗：" + (e.code || e.message);
-    }
-  };
-  $("#acct").onclick = () => {
-    if (!auth.currentUser) return;
-    openModal(`<h3>帳號</h3><p class="fld">目前登入：${esc(auth.currentUser.email || auth.currentUser.displayName || "")}</p>
-      <div class="acts"><button class="btn danger" id="mOut">登出</button><span style="display:flex;gap:8px"><button class="btn ghost" id="mToGas">改用自己的試算表</button><button class="btn ghost" id="mCancel">關閉</button></span></div>`);
-    $("#mCancel").onclick = closeModal;
-    $("#mToGas").onclick = openGasSetup;
-    $("#mOut").onclick = async () => { Store.flushAll(); await new Promise(r => setTimeout(r, 300)); await signOut(auth); closeModal(); };
-  };
-  onAuthStateChanged(auth, user => {
-    $("#login").classList.toggle("hidden", !!user);
-    if (user) startCloud(fdb, user);
-    else { Store.mode = "none"; resetData(); loaded = false; $("#acct").classList.remove("on"); $("#acct").querySelector("span").textContent = "未登入"; setSync("請先登入"); renderAll(); }
-  });
+  if (lsGet("blk:trial")) { startLocal("本機試用：資料只存在這台裝置"); return; }
+  $("#login").classList.remove("hidden");
+  setSync("請先連接試算表");
+  $("#acct").querySelector("span").textContent = "尚未連接";
+  $("#acct").onclick = openGasSetup;
 }
 boot();
 })();
