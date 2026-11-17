@@ -1,6 +1,46 @@
 "use strict";
 /* 方塊日程 · 待辦總覽 */
 /* ---------- MASTER todo view ---------- */
+/* 四象限：重要＝優先度（只算「高」，或「高＋中」），緊急＝已逾期或 N 天內截止 */
+const QUADS = [
+  { id: "q1", t: "重要且緊急", s: "馬上做" },
+  { id: "q2", t: "重要但不緊急", s: "排進行程，避免變緊急" },
+  { id: "q3", t: "緊急但不重要", s: "快速處理、或請別人幫忙" },
+  { id: "q4", t: "不重要也不緊急", s: "有空再說，或刪掉" },
+];
+function quadOf(t){
+  const f = ui.mf, p = priOf(t), imp = p === "h" || (f.qImp === "hm" && p === "m");
+  const d = dueInfo(t), urg = !!(d && d.diff <= +f.qDays);
+  return imp ? (urg ? "q1" : "q2") : (urg ? "q3" : "q4");
+}
+function quadsHTML(list, row){
+  const f = ui.mf, by = { q1: [], q2: [], q3: [], q4: [] };
+  list.forEach(t => by[quadOf(t)].push(t));
+  const sorter = (a, b) => ((a.due || "9") < (b.due || "9") ? -1 : (a.due || "9") > (b.due || "9") ? 1 : 0) || (PRI[priOf(a)].o - PRI[priOf(b)].o);
+  return `<div class="qaxis">
+      <span>重要＝</span><select data-f="qImp"><option value="h">高優先</option><option value="hm">高＋中優先</option></select>
+      <span>緊急＝已逾期或</span><select data-f="qDays">${[0, 1, 3, 7, 14].map(n => `<option value="${n}">${n === 0 ? "今天" : n + " 天內"}</option>`).join("")}</select><span>截止</span>
+    </div>
+    <div class="quads">${QUADS.map(q => { const ts = by[q.id].sort(sorter);
+      return `<section class="quad ${q.id}"><div class="quad-h"><b>${q.t}</b><small>${q.s}</small><span class="n">${ts.length} 項</span></div>
+        ${ts.length ? `<ul class="mlist">${ts.map(row).join("")}</ul>` : `<div class="empty">沒有待辦</div>`}</section>`; }).join("")}</div>`;
+}
+function newProject(after){
+  let color = COLORS.find(c => !S.projects.some(p => p.color === c)) || COLORS[S.projects.length % COLORS.length];
+  openModal(`<h3>新增專案</h3>
+    <label class="fld">名稱<input type="text" id="mTitle" maxlength="40" placeholder="例如：碩士論文"></label>
+    <div class="fld">顏色<div class="swatches">${COLORS.map(c => `<button class="sw ${c===color?"on":""}" style="--c:${c}" data-c="${c}" aria-label="顏色"></button>`).join("")}</div></div>
+    <div class="acts"><span></span><span style="display:flex;gap:8px"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mSave">建立</button></span></div>`);
+  $("#sheet").querySelector(".swatches").addEventListener("click", e => { const s = e.target.closest(".sw"); if (!s) return; color = s.dataset.c; $("#sheet").querySelectorAll(".sw").forEach(x => x.classList.toggle("on", x === s)); });
+  $("#mCancel").onclick = closeModal;
+  const go = () => {
+    const name = $("#mTitle").value.trim(); if (!name) { $("#mTitle").focus(); return; }
+    const p = { id: uid(), name, color }; S.projects.push(p);
+    saveMain(); closeModal(); after && after(p); renderTodo(); renderTray(); toast(`已建立專案「${name}」`);
+  };
+  $("#mSave").onclick = go;
+  $("#mTitle").addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); go(); } });
+}
 function matrixHTML(list, row){
   if (!list.length) return `<div class="empty">${S.tasks.length ? "沒有符合篩選的待辦" : "還沒有待辦，從上面新增第一個吧"}</div>`;
   const colMap = new Map();
@@ -50,7 +90,7 @@ function renderMaster(){
   const groups = [];
   list.forEach(t => { const g = bucketOf(t, f.sort); const last = groups[groups.length - 1]; if (last && last.k === g.k && last.t === g.t) last.items.push(t); else groups.push(Object.assign({ items: [t] }, g)); });
   const row = t => { const p = proj(t.projectId), par = t.parentId && task(t.parentId), d = dueInfo(t);
-    return `<li class="mrow ${t.done ? "done" : ""} ${d && !t.done ? d.cls : ""}" data-id="${t.id}" style="--c:${colorOf(t.projectId)}">
+    return `<li class="mrow pr-${priOf(t)} ${t.done ? "done" : ""} ${d && !t.done ? d.cls : ""}" data-id="${t.id}" style="--c:${colorOf(t.projectId)}">
       <input type="checkbox" data-act="check" ${t.done ? "checked" : ""} aria-label="完成">
       <div class="mmain"><div class="mt1">${priBadge(t)}<span class="t" data-act="editTask">${esc(t.title)}</span></div>
       <div class="mt2"><span class="pj"><span class="dot"></span>${esc(p ? p.name : "其他")}${par ? ` › ${esc(par.title)}` : ""}</span><span class="est">${hm(t.est || 30)}</span>${dueBadge(t)}</div></div>
@@ -67,6 +107,7 @@ function renderMaster(){
       <button class="btn">＋</button>
       <div class="opts">
         <select id="maProj" aria-label="專案">${pOpts || `<option value="">（會建立「一般」專案）</option>`}</select>
+        <button type="button" class="btn ghost sm" id="maNewProj">＋ 專案</button>
         <select id="maPri" aria-label="優先度">${["h","m","l"].map(p => `<option value="${p}" ${p === (ui.maPri || "m") ? "selected" : ""}>${PRI[p].t}優先</option>`).join("")}</select>
         <input type="date" id="maDue" aria-label="截止日期" title="截止日期（可不填）">
       </div>
@@ -75,16 +116,16 @@ function renderMaster(){
       <select data-f="status"><option value="open">未完成</option><option value="all">全部</option><option value="done">已完成</option></select>
       <select data-f="pri"><option value="all">所有優先度</option><option value="h">高</option><option value="m">中</option><option value="l">低</option></select>
       <select data-f="proj"><option value="all">所有專案</option>${S.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>
-      <div class="lay" role="group" aria-label="排版"><button type="button" data-lay="list" class="${f.layout !== "matrix" ? "on" : ""}">清單</button><button type="button" data-lay="matrix" class="${f.layout === "matrix" ? "on" : ""}">專案 × 截止日</button></div>
-      <span style="margin-left:auto" class="${f.layout === "matrix" ? "hidden" : ""}">排序</span>
-      <select data-f="sort" class="${f.layout === "matrix" ? "hidden" : ""}"><option value="due">截止日</option><option value="pri">優先度</option><option value="proj">專案</option><option value="created">最新加入</option></select>
+      <div class="lay" role="group" aria-label="排版">${[["list", "清單"], ["quad", "四象限"], ["matrix", "專案 × 截止日"]].map(([k, t]) => `<button type="button" data-lay="${k}" class="${(f.layout || "list") === k ? "on" : ""}">${t}</button>`).join("")}</div>
+      <span style="margin-left:auto" class="${f.layout !== "list" ? "hidden" : ""}">排序</span>
+      <select data-f="sort" class="${f.layout !== "list" ? "hidden" : ""}"><option value="due">截止日</option><option value="pri">優先度</option><option value="proj">專案</option><option value="created">最新加入</option></select>
     </div>
-    ${f.layout === "matrix" ? matrixHTML(list, row) : groups.length ? `<div class="mgroups">` + groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("") + `</div>`
+    ${f.layout === "matrix" ? matrixHTML(list, row) : f.layout === "quad" ? quadsHTML(list, row) : groups.length ? `<div class="mgroups">` + groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("") + `</div>`
       : `<div class="empty">${S.tasks.length ? "沒有符合篩選的待辦" : "還沒有待辦，從上面新增第一個吧"}</div>`}`;
-  el.querySelectorAll(".mfil select").forEach(sel => { if (sel.dataset.f === "proj" && !proj(f.proj)) f.proj = "all"; sel.value = f[sel.dataset.f]; });
+  el.querySelectorAll(".mfil select, .qaxis select").forEach(sel => { if (sel.dataset.f === "proj" && !proj(f.proj)) f.proj = "all"; sel.value = String(f[sel.dataset.f]); });
 }
 $("#allPanel").addEventListener("change", e => {
-  const sel = e.target.closest(".mfil select");
+  const sel = e.target.closest(".mfil select, .qaxis select");
   if (sel) { ui.mf[sel.dataset.f] = sel.value; saveUI(); renderMaster(); return; }
   if (e.target.id === "maProj") ui.maProj = e.target.value;
   if (e.target.id === "maPri") ui.maPri = e.target.value;
@@ -100,6 +141,7 @@ $("#allPanel").addEventListener("submit", e => {
   const i = $("#maTitle"); i && i.focus();
 });
 $("#allPanel").addEventListener("click", e => {
+  if (e.target.closest("#maNewProj")) { newProject(p => { ui.maProj = p.id; renderMaster(); }); return; }
   const lb = e.target.closest("[data-lay]");
   if (lb) { ui.mf.layout = lb.dataset.lay; saveUI(); renderMaster(); return; }
   const a = e.target.closest("[data-act]"); if (!a) return;

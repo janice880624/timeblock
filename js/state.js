@@ -14,7 +14,7 @@ const prefetchDays = keys => Store.ensureMonths(keys.map(k => k.slice(0, 7))).ca
 const ui = Object.assign({ view: "day", hideDone: false, collapsed: {} }, lsGet("blk:ui") || {});
 ui.date = todayKey(); ui.weekStart = mondayOf(ui.date); ui.addingSub = null;
 let loaded = false;
-ui.mf = Object.assign({ status: "open", pri: "all", proj: "all", sort: "due", layout: "list" }, ui.mf || {});
+ui.mf = Object.assign({ status: "open", pri: "all", proj: "all", sort: "due", layout: "list", qImp: "h", qDays: 3 }, ui.mf || {});
 if (ui.recOpen == null) ui.recOpen = false;
 const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed, mf: ui.mf, recOpen: ui.recOpen });
 const saveMain = () => Store.save("main", S);

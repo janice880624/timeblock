@@ -74,7 +74,7 @@ function taskRow(t, sub, sch){
   return `<li class="task ${sub?"sub":""} ${t.done?"done":""}" data-id="${t.id}">
     <span class="handle" title="拖曳到時間軸">⠿</span>
     <input type="checkbox" ${t.done?"checked":""} data-act="check" aria-label="完成">
-    ${priOf(t) === "h" ? priBadge(t) : ""}<span class="t" data-act="editTask">${esc(t.title)}</span>${dueBadge(t)}
+    ${priBadge(t)}<span class="t" data-act="editTask">${esc(t.title)}</span>${dueBadge(t)}
     ${sch.has(t.id) ? `<span class="sched-dot" title="已排入當日"></span>` : ""}
     <span class="est">${hm(t.est||30)}</span>
     <button class="ico" data-act="sched" title="排入${shortDate(ui.date)}" aria-label="排入當日">⇥</button>
