@@ -53,7 +53,7 @@ function renderTray(){
 }
 
 
-/* ---------- 今日紀錄：體力、工作時間、運動時間（自己輸入） ---------- */
+/* ---------- 今日紀錄：心情、體力、睡眠、運動（自己輸入） ---------- */
 const ENERGY = ["", "很累", "有點累", "普通", "不錯", "很有精神"];
 const MOOD = ["", "很差", "不太好", "普通", "不錯", "很好"], MOOD_FACE = ["", "😫", "😕", "😐", "🙂", "😄"];
 if (ui.logOpen == null) ui.logOpen = true;
@@ -62,7 +62,7 @@ function logSummary(l){
   const p = [];
   if (l.mood) p.push(`心情 ${MOOD_FACE[l.mood]}`);
   if (l.energy) p.push(`體力 ${l.energy}`);
-  if (l.work) p.push(`工作 ${hm(l.work)}`);
+  if (l.sleep) p.push(`睡眠 ${hm(l.sleep)}`);
   if (l.ex) p.push(`運動 ${hm(l.ex)}`);
   return p.join(" · ") || "還沒填";
 }
@@ -81,9 +81,9 @@ function renderDayLog(){
         <div class="mood" role="group" aria-label="心情">${[1,2,3,4,5].map(n => `<button type="button" data-m="${n}" class="m${n} ${l.mood === n ? "on" : ""}" title="${MOOD[n]}" aria-label="${MOOD[n]}">${MOOD_FACE[n]}</button>`).join("")}</div>
         <span class="dl-hint">${l.mood ? MOOD[l.mood] : "很差 → 很好"}</span>
         <input type="text" id="lgMoodN" maxlength="80" value="${esc(l.moodNote || "")}" placeholder="一句話記下今天（可不填）" aria-label="心情筆記"></div>
-      <div class="dl-row"><span class="dl-k">工作</span>
-        <input type="number" id="lgWH" min="0" max="24" inputmode="numeric" value="${l.work ? Math.floor(l.work / 60) : ""}" placeholder="0" aria-label="工作小時"><span>小時</span>
-        <input type="number" id="lgWM" min="0" max="59" step="5" inputmode="numeric" value="${l.work ? l.work % 60 : ""}" placeholder="0" aria-label="工作分鐘"><span>分</span></div>
+      <div class="dl-row"><span class="dl-k">睡眠</span>
+        <input type="number" id="lgWH" min="0" max="16" inputmode="numeric" value="${l.sleep ? Math.floor(l.sleep / 60) : ""}" placeholder="0" aria-label="睡眠小時"><span>小時</span>
+        <input type="number" id="lgWM" min="0" max="59" step="5" inputmode="numeric" value="${l.sleep ? l.sleep % 60 : ""}" placeholder="0" aria-label="睡眠分鐘"><span>分</span></div>
       <div class="dl-row"><span class="dl-k">運動</span>
         <input type="number" id="lgEx" min="0" max="600" step="5" inputmode="numeric" value="${l.ex || ""}" placeholder="0" aria-label="運動分鐘"><span>分鐘</span>
         <input type="text" id="lgExN" maxlength="60" value="${esc(l.exNote || "")}" placeholder="內容，例如：游泳 1500m" aria-label="運動內容"></div>
@@ -93,7 +93,7 @@ function saveDayLog(){
   const k = ui.date, d = days[k]; if (!d) return;
   const n = id => { const v = parseInt(($("#" + id) || {}).value, 10); return isNaN(v) || v < 0 ? 0 : v; };
   const l = Object.assign({}, d.log);
-  if ($("#lgWH")) l.work = Math.min(n("lgWH") * 60 + Math.min(n("lgWM"), 59), 24 * 60);
+  if ($("#lgWH")) l.sleep = Math.min(n("lgWH") * 60 + Math.min(n("lgWM"), 59), 16 * 60);
   if ($("#lgEx")) l.ex = Math.min(n("lgEx"), 600);
   if ($("#lgExN")) l.exNote = $("#lgExN").value.trim();
   if ($("#lgMoodN")) l.moodNote = $("#lgMoodN").value.trim();

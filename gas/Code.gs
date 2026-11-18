@@ -399,11 +399,11 @@ function restoreBackup() {
   ui.alert('已還原。請重新整理方塊日程網頁。');
 }
 
-/* 每日紀錄：體力、工作時數、運動 */
+/* 每日紀錄：心情、體力、睡眠、運動 */
 function writeLogs_(monthKeys) {
-  const header = ['日期', '心情（1–5）', '心情筆記', '體力（1–5）', '工作時數', '運動分鐘', '運動內容'];
+  const header = ['日期', '心情（1–5）', '心情筆記', '體力（1–5）', '睡眠時數', '運動分鐘', '運動內容'];
   const sh = view_('每日紀錄', header);
-  if (sh.getRange(1, 2).getValue() !== header[1]) { sh.clear(); sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold'); }
+  if (sh.getRange(1, 2).getValue() !== header[1] || sh.getRange(1, 5).getValue() !== header[4]) { sh.clear(); sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold'); }
   const yms = monthKeys.map(k => k.slice(6));
   const last = sh.getLastRow();
   let keep = last > 1 ? sh.getRange(2, 1, last - 1, header.length).getDisplayValues() : [];
@@ -413,7 +413,7 @@ function writeLogs_(monthKeys) {
     const m = docs[k]; if (!m || !m.days) return;
     Object.keys(m.days).sort().forEach(K => {
       const l = m.days[K] && m.days[K].log; if (!l) return;
-      keep.push([K, l.mood ? String(l.mood) : '', l.moodNote || '', l.energy ? String(l.energy) : '', l.work ? String(Math.round(l.work / 6) / 10) : '', l.ex ? String(l.ex) : '', l.exNote || '']);
+      keep.push([K, l.mood ? String(l.mood) : '', l.moodNote || '', l.energy ? String(l.energy) : '', l.sleep ? String(Math.round(l.sleep / 6) / 10) : '', l.ex ? String(l.ex) : '', l.exNote || '']);
     });
   });
   keep.sort((a, b) => a[0] < b[0] ? -1 : 1);

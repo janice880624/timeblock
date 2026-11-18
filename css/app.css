@@ -459,7 +459,7 @@ button.wc{cursor:pointer}
 .ebars i{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;font-style:normal;font-weight:700;font-size:12.5px;border:1px solid}
 .ebars i.none{background:transparent;border:1px dashed var(--line);color:var(--muted)}
 .mtrack{position:relative;width:100%;max-width:26px;height:80px;display:flex;align-items:flex-end;border-bottom:1px solid var(--line)}
-.mfill{width:100%;background:#4c8edc;border-radius:4px 4px 0 0;min-height:0}
+.mfill{width:100%;background:#6250d6;border-radius:4px 4px 0 0;min-height:0}
 #exBars .mfill{background:#1baf7a}
 .mtrack span{position:absolute;left:50%;transform:translateX(-50%);top:-15px;font-size:10.5px;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
 .mbars{padding-top:14px}

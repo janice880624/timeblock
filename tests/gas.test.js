@@ -65,12 +65,12 @@ test("每日備份最多保留 10 份", () => {
   const n = env.ss.getSheets().filter(s => s.getName().startsWith("備份 ")).length;
   assert.ok(n <= 10, "backups: " + n);
 });
-test("每日紀錄（體力、工作、運動）寫進「每日紀錄」工作表", () => {
+test("每日紀錄（心情、體力、睡眠、運動）寫進「每日紀錄」工作表", () => {
   const env = makeEnv(), t = env.api.setup();
   call(env, t, { action: "setMany", docs: {
     main: { projects: [], tasks: [], recurring: [] },
     "month-2026-11": { days: {
-      "2026-11-17": { blocks: [], log: { mood: 4, moodNote: "論文有進度", energy: 4, work: 390, ex: 60, exNote: "游泳 1500m" } },
+      "2026-11-17": { blocks: [], log: { mood: 4, moodNote: "論文有進度", energy: 4, sleep: 390, ex: 60, exNote: "游泳 1500m" } },
       "2026-11-18": { blocks: [{ id: "b", title: "寫", start: 540, dur: 60 }] } } } } });
   env.api.refreshViewsJob();
   const rows = env.ss.getSheetByName("每日紀錄").getDataRange().getDisplayValues();
