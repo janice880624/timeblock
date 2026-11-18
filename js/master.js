@@ -145,10 +145,11 @@ function renderMaster(){
       </div>
     </form></div>
     <div class="mfil">
-      <select data-f="status"><option value="open">未完成</option><option value="all">全部</option><option value="done">已完成</option></select>
-      <select data-f="pri"><option value="all">所有優先度</option><option value="h">高</option><option value="m">中</option><option value="l">低</option></select>
-      <select data-f="proj"><option value="all">所有專案</option>${S.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>
       <div class="lay" role="group" aria-label="排版">${[["list", "清單"], ["quad", "四象限"], ["matrix", "專案 × 截止日"]].map(([k, t]) => `<button type="button" data-lay="${k}" class="${(f.layout || "list") === k ? "on" : ""}">${t}</button>`).join("")}</div>
+      <span class="mfil-sep" aria-hidden="true"></span>
+      <select data-f="status"><option value="open">未完成</option><option value="all">全部</option><option value="done">已完成</option></select>
+      <select data-f="pri"><option value="all">所有優先度</option><option value="h">高優先</option><option value="m">中優先</option><option value="l">低優先</option></select>
+      <select data-f="proj"><option value="all">所有專案</option>${S.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>
       <span style="margin-left:auto" class="${f.layout !== "list" ? "hidden" : ""}">排序</span>
       <select data-f="sort" class="${f.layout !== "list" ? "hidden" : ""}"><option value="due">截止日</option><option value="pri">優先度</option><option value="proj">專案</option><option value="created">最新加入</option></select>
     </div>
