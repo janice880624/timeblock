@@ -3,7 +3,8 @@
 /* ---------- state ---------- */
 let S = { projects: [], tasks: [] };
 const days = {}, weeks = {}, archives = {};
-const dayHasData = d => d && ((d.blocks && d.blocks.length) || (d.rdone && Object.keys(d.rdone).some(x => d.rdone[x])));
+const logHasData = l => !!(l && (l.energy || l.work || l.ex || (l.exNote && l.exNote.trim())));
+const dayHasData = d => d && ((d.blocks && d.blocks.length) || (d.rdone && Object.keys(d.rdone).some(x => d.rdone[x])) || logHasData(d.log));
 function buildMonth(ym){
   const out = { days: {} };
   Object.keys(days).sort().forEach(K => { if (K.startsWith(ym + "-") && dayHasData(days[K])) out.days[K] = days[K]; });
@@ -16,7 +17,7 @@ ui.date = todayKey(); ui.weekStart = mondayOf(ui.date); ui.addingSub = null;
 let loaded = false;
 ui.mf = Object.assign({ status: "open", pri: "all", proj: "all", sort: "due", layout: "list", qImp: "h", qDays: 3 }, ui.mf || {});
 if (ui.recOpen == null) ui.recOpen = false;
-const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed, mf: ui.mf, recOpen: ui.recOpen });
+const saveUI = () => lsSet("blk:ui", { view: ui.view, hideDone: ui.hideDone, collapsed: ui.collapsed, mf: ui.mf, recOpen: ui.recOpen, logOpen: ui.logOpen });
 const saveMain = () => Store.save("main", S);
 const saveDay = k => Store.save("day-" + k, days[k]);
 async function loadDay(k){

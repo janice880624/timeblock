@@ -33,6 +33,22 @@ async function renderWeek(){
     <div class="kpi"><small>執行率</small><b>${P ? Math.round(D/P*100) : 0}<em>%</em></b><em>完成時數 ÷ 規劃時數</em></div>
     <div class="kpi"><small>完成待辦</small><b>${doneTasks.length}<em> 項</em></b><em>本週勾選完成</em></div>`;
 
+  /* 體力、工作、運動（每日紀錄） */
+  const logs = keys.map(k => ({ k, l: (days[k] && days[k].log) || {} }));
+  const en = logs.filter(x => x.l.energy), wk2 = logs.filter(x => x.l.work), ex = logs.filter(x => x.l.ex);
+  const W = wk2.reduce((a, x) => a + x.l.work, 0), E = ex.reduce((a, x) => a + x.l.ex, 0);
+  const avgE = en.length ? en.reduce((a, x) => a + x.l.energy, 0) / en.length : 0;
+  $("#bodyKpis").innerHTML = `
+    <div><small>平均體力</small><b>${en.length ? avgE.toFixed(1) : "—"}<em> / 5</em></b><em>${en.length} 天有紀錄</em></div>
+    <div><small>工作</small><b>${hrs(W)}<em> 小時</em></b><em>${wk2.length ? `平均每天 ${hrs(W / wk2.length)} 小時` : "還沒有紀錄"}</em></div>
+    <div><small>運動</small><b>${E >= 120 ? hrs(E) + "<em> 小時</em>" : E + "<em> 分鐘</em>"}</b><em>${ex.length} 天有運動</em></div>`;
+  const lbl = k => `<span>${WD[parseKey(k).getDay()]}</span>`;
+  $("#energyRow").innerHTML = logs.map(x => `<div class="ecol" title="${shortDate(x.k)}：${x.l.energy ? `體力 ${x.l.energy}（${ENERGY[x.l.energy]}）` : "沒有紀錄"}"><i class="${x.l.energy ? "e" + x.l.energy : "none"}">${x.l.energy || "·"}</i>${lbl(x.k)}</div>`).join("");
+  const bars = (vals, fmtV) => { const mx = Math.max(1, ...vals.map(v => v.v)); return vals.map(v => `<div class="mcol" title="${shortDate(v.k)}：${v.v ? fmtV(v.v) : "沒有紀錄"}"><div class="mtrack"><div class="mfill" style="height:${v.v / mx * 100}%"></div>${v.v ? `<span>${fmtV(v.v, true)}</span>` : ""}</div>${lbl(v.k)}</div>`).join(""); };
+  $("#workBars").innerHTML = bars(logs.map(x => ({ k: x.k, v: x.l.work || 0 })), (v, s) => s ? hrs(v) : hm(v));
+  $("#exBars").innerHTML = bars(logs.map(x => ({ k: x.k, v: x.l.ex || 0 })), (v, s) => s ? String(v) : v + " 分鐘");
+  const notes = logs.filter(x => x.l.ex || x.l.exNote);
+  $("#exList").innerHTML = notes.map(x => `<li><span>${esc(x.l.exNote || "運動")}</span><span class="when">週${WD[parseKey(x.k).getDay()]}${x.l.ex ? ` · ${x.l.ex} 分鐘` : ""}</span></li>`).join("");
   const max = Math.max(60, ...per.map(x => x.plan));
   $("#dayBars").innerHTML = per.map(x => {
     const ph = x.plan/max*100, dh = x.plan ? x.done/x.plan*100 : 0;
@@ -61,7 +77,7 @@ async function renderWeek(){
   $("#missList").innerHTML = miss.length ? miss.map(({k,b}) => `<li style="--c:${colorOf(b.projectId)}"><span class="dot"></span><span>${esc(b.title)}</span><span class="when">週${WD[parseKey(k).getDay()]} ${fmt(b.start)}</span></li>`).join("")
     : `<li class="empty" style="display:block">${P ? "排了的都完成了 👏" : "還沒有資料"}</li>`;
 
-  weekData = { keys, per, P, D, nB, nD, doneTasks, rowsP, miss };
+  weekData = { keys, per, P, D, nB, nD, doneTasks, rowsP, miss, logs, avgE, enN: en.length, W, E };
 }
 const nowMin = () => { const n = new Date(); return n.getHours()*60 + n.getMinutes(); };
 $("#copySummary").addEventListener("click", async () => {
@@ -73,6 +89,7 @@ $("#copySummary").addEventListener("click", async () => {
   s += `■ 專案時間\n` + (w.rowsP.map(([id,o]) => `${(proj(id)||{name:"其他"}).name}：${hrs(o.done)} / ${hrs(o.plan)}h`).join("\n") || "（無）") + "\n\n";
   s += `■ 完成的待辦\n` + (w.doneTasks.map(t => `✓ ${t.title}`).join("\n") || "（無）") + "\n\n";
   s += `■ 沒完成的方塊\n` + (w.miss.map(m => `· ${m.b.title}`).join("\n") || "（無）") + "\n\n";
+  s += `■ 體力、工作與運動\n平均體力 ${w.enN ? w.avgE.toFixed(1) + " / 5" : "—"}，工作 ${hrs(w.W)} 小時，運動 ${w.E} 分鐘\n` + w.logs.filter(x => x.l.energy || x.l.work || x.l.ex).map(x => `週${WD[parseKey(x.k).getDay()]}：${[x.l.energy ? "體力 " + x.l.energy : "", x.l.work ? "工作 " + hm(x.l.work) : "", x.l.ex ? "運動 " + x.l.ex + " 分鐘" + (x.l.exNote ? "（" + x.l.exNote + "）" : "") : ""].filter(Boolean).join("、")}`).join("\n") + "\n\n";
   s += `■ 回顧\n${$("#weekNote").value || "（未填）"}`;
   try { await navigator.clipboard.writeText(s); toast("已複製本週統整"); }
   catch { openModal(`<h3>複製本週統整</h3><textarea class="copybox" readonly>${esc(s)}</textarea><div class="acts"><span></span><button class="btn" id="mCancel">關閉</button></div>`); const ta = $("#sheet textarea"); ta.focus(); ta.select(); $("#mCancel").onclick = closeModal; }

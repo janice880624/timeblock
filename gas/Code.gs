@@ -300,7 +300,7 @@ function refreshViews_(changed) {
     archKeys.forEach(k => ((arch[k] && arch[k].tasks) || []).forEach(t => archived.push(t)));
     writeTasks_(main, pname, archived); writeRecurring_(main, pname);
   }
-  if (monthKeys.length) writeBlocks_(monthKeys, pname);
+  if (monthKeys.length) { writeBlocks_(monthKeys, pname); writeLogs_(monthKeys); }
 }
 function view_(name, header) {
   const ss = SpreadsheetApp.getActive();
@@ -397,4 +397,25 @@ function restoreBackup() {
     refreshViews_(vals.slice(1).map(r => String(r[0])).filter(Boolean));
   } finally { lock.releaseLock(); }
   ui.alert('已還原。請重新整理方塊日程網頁。');
+}
+
+/* 每日紀錄：體力、工作時數、運動 */
+function writeLogs_(monthKeys) {
+  const header = ['日期', '體力（1–5）', '工作時數', '運動分鐘', '運動內容'];
+  const sh = view_('每日紀錄', header);
+  const yms = monthKeys.map(k => k.slice(6));
+  const last = sh.getLastRow();
+  let keep = last > 1 ? sh.getRange(2, 1, last - 1, header.length).getDisplayValues() : [];
+  keep = keep.filter(r => r[0] && yms.indexOf(String(r[0]).slice(0, 7)) < 0);
+  const docs = getMany_(monthKeys);
+  monthKeys.forEach(k => {
+    const m = docs[k]; if (!m || !m.days) return;
+    Object.keys(m.days).sort().forEach(K => {
+      const l = m.days[K] && m.days[K].log; if (!l) return;
+      keep.push([K, l.energy ? String(l.energy) : '', l.work ? String(Math.round(l.work / 6) / 10) : '', l.ex ? String(l.ex) : '', l.exNote || '']);
+    });
+  });
+  keep.sort((a, b) => a[0] < b[0] ? -1 : 1);
+  if (last > 1) sh.getRange(2, 1, last - 1, header.length).clearContent();
+  if (keep.length) sh.getRange(2, 1, keep.length, header.length).setNumberFormat('@').setValues(keep);
 }

@@ -45,7 +45,7 @@ $("#weekStrip").addEventListener("click", e => { const b = e.target.closest(".ws
 function renderTray(){
   const tr = $("#tray");
   const open = S.tasks.filter(t => !t.done);
-  if (!loaded || !open.length) { tr.innerHTML = `<div class="tray-h"><span>待排入</span></div><div class="empty" style="padding:6px">${loaded ? "沒有未完成的待辦，到「待辦」分頁新增吧" : "載入中…"}</div>`; return; }
+  if (!loaded || !open.length) { tr.innerHTML = `<div class="tray-h"><span>待排入</span></div><div class="empty" style="padding:6px">${loaded ? "沒有未完成的待辦，到「專案」或「待辦總覽」新增吧" : "載入中…"}</div>`; return; }
   const sch = scheduledToday();
   tr.innerHTML = `<div class="tray-h"><span>待排入 · 點一下自動排，長按拖曳到指定時間</span></div>
     <div class="chips">${open.map(t => `<div class="chip ${sch.has(t.id)?"sch":""}" style="--c:${colorOf(t.projectId)}" data-id="${t.id}">${esc(t.title)} · ${hm(t.est||30)}${(() => { const d = dueInfo(t); return d && d.cls ? `<span class="cd">${d.label}</span>` : ""; })()}</div>`).join("")}</div>`;
@@ -53,12 +53,64 @@ function renderTray(){
 }
 
 
+/* ---------- 今日紀錄：體力、工作時間、運動時間（自己輸入） ---------- */
+const ENERGY = ["", "很累", "有點累", "普通", "不錯", "很有精神"];
+if (ui.logOpen == null) ui.logOpen = true;
+let logTimer = null;
+function logSummary(l){
+  const p = [];
+  if (l.energy) p.push(`體力 ${l.energy}`);
+  if (l.work) p.push(`工作 ${hm(l.work)}`);
+  if (l.ex) p.push(`運動 ${hm(l.ex)}`);
+  return p.join(" · ") || "還沒填";
+}
+function renderDayLog(){
+  const el = $("#dayLog"), k = ui.date, d = days[k];
+  if (!d) { el.innerHTML = ""; return; }
+  if (el.contains(document.activeElement) && el.dataset.k === k) return;      // 正在輸入時不要重畫
+  el.dataset.k = k;
+  const l = d.log || {}, open = ui.logOpen;
+  el.innerHTML = `<button class="dl-head" id="dlTog" aria-expanded="${open}"><span class="caret">▾</span><b>${k === todayKey() ? "今日" : shortDate(k)}紀錄</b><span class="dl-sum">${esc(logSummary(l))}</span></button>
+    ${open ? `<div class="dl-body">
+      <div class="dl-row"><span class="dl-k">體力</span>
+        <div class="energy" role="group" aria-label="體力">${[1,2,3,4,5].map(n => `<button type="button" data-e="${n}" class="e${n} ${l.energy === n ? "on" : ""}" title="${ENERGY[n]}">${n}</button>`).join("")}</div>
+        <span class="dl-hint">${l.energy ? ENERGY[l.energy] : "1 很累 → 5 很有精神"}</span></div>
+      <div class="dl-row"><span class="dl-k">工作</span>
+        <input type="number" id="lgWH" min="0" max="24" inputmode="numeric" value="${l.work ? Math.floor(l.work / 60) : ""}" placeholder="0" aria-label="工作小時"><span>小時</span>
+        <input type="number" id="lgWM" min="0" max="59" step="5" inputmode="numeric" value="${l.work ? l.work % 60 : ""}" placeholder="0" aria-label="工作分鐘"><span>分</span></div>
+      <div class="dl-row"><span class="dl-k">運動</span>
+        <input type="number" id="lgEx" min="0" max="600" step="5" inputmode="numeric" value="${l.ex || ""}" placeholder="0" aria-label="運動分鐘"><span>分鐘</span>
+        <input type="text" id="lgExN" maxlength="60" value="${esc(l.exNote || "")}" placeholder="內容，例如：游泳 1500m" aria-label="運動內容"></div>
+    </div>` : ""}`;
+}
+function saveDayLog(){
+  const k = ui.date, d = days[k]; if (!d) return;
+  const n = id => { const v = parseInt(($("#" + id) || {}).value, 10); return isNaN(v) || v < 0 ? 0 : v; };
+  const l = Object.assign({}, d.log);
+  if ($("#lgWH")) l.work = Math.min(n("lgWH") * 60 + Math.min(n("lgWM"), 59), 24 * 60);
+  if ($("#lgEx")) l.ex = Math.min(n("lgEx"), 600);
+  if ($("#lgExN")) l.exNote = $("#lgExN").value.trim();
+  Object.keys(l).forEach(x => { if (!l[x]) delete l[x]; });
+  if (Object.keys(l).length) d.log = l; else delete d.log;
+  $("#dayLog .dl-sum").textContent = logSummary(l);
+  clearTimeout(logTimer); logTimer = setTimeout(() => saveDay(k), 600);
+}
+$("#dayLog").addEventListener("input", e => { if (e.target.matches("input")) saveDayLog(); });
+$("#dayLog").addEventListener("click", e => {
+  if (e.target.closest("#dlTog")) { ui.logOpen = !ui.logOpen; saveUI(); $("#dayLog").dataset.k = ""; renderDayLog(); return; }
+  const b = e.target.closest("[data-e]"); if (!b) return;
+  const d = days[ui.date]; if (!d) return;
+  const v = +b.dataset.e, l = Object.assign({}, d.log);
+  if (l.energy === v) delete l.energy; else l.energy = v;               // 再按一次取消
+  if (Object.keys(l).length) d.log = l; else delete d.log;
+  saveDay(ui.date); $("#dayLog").dataset.k = ""; renderDayLog();
+});
 function renderDay(){
   const k = ui.date, d = parseKey(k);
   const diff = Math.round((parseKey(k) - parseKey(todayKey()))/864e5);
   $("#dTitle").textContent = `${d.getMonth()+1}月${d.getDate()}日 星期${WD[d.getDay()]}`;
   $("#dSub").textContent = diff === 0 ? "今天" : diff === 1 ? "明天" : diff === -1 ? "昨天" : diff > 0 ? `${diff} 天後` : `${-diff} 天前`;
-  renderWeekStrip(); renderTray();
+  renderWeekStrip(); renderTray(); renderDayLog();
   const ppm = PPM(), grid = $("#tlGrid");
   grid.style.height = (END-START)*ppm + "px";
   let h = "";
