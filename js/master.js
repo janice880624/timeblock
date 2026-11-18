@@ -8,10 +8,41 @@ const QUADS = [
   { id: "q3", t: "緊急但不重要", s: "快速處理、或請別人幫忙" },
   { id: "q4", t: "不重要也不緊急", s: "有空再說，或刪掉" },
 ];
-function quadOf(t){
+/* 自己分類過的（t.quad）優先；沒分過的依優先度和截止日自動判斷 */
+function autoQuad(t){
   const f = ui.mf, p = priOf(t), imp = p === "h" || (f.qImp === "hm" && p === "m");
   const d = dueInfo(t), urg = !!(d && d.diff <= +f.qDays);
   return imp ? (urg ? "q1" : "q2") : (urg ? "q3" : "q4");
+}
+const quadOf = t => QUADS.some(q => q.id === t.quad) ? t.quad : autoQuad(t);
+function setQuad(t, q){
+  if (!q || q === autoQuad(t)) delete t.quad; else t.quad = q;
+  saveMain(); renderMaster();
+}
+function attachQuadDrag(el){
+  attachDrag(el, {
+    hold: true,
+    onStart(ev){
+      const t = task(el.dataset.id); if (!t) return null;
+      const g = document.createElement("div"); g.className = "drag-ghost"; g.style.setProperty("--c", colorOf(t.projectId)); g.textContent = t.title;
+      document.body.appendChild(g); el.classList.add("dragging-row");
+      const c = { t, g, q: null }; this.onMove(ev, c); return c;
+    },
+    onMove(ev, c){
+      if (!c) return;
+      c.g.style.left = ev.clientX + "px"; c.g.style.top = ev.clientY + "px";
+      const hit = document.elementFromPoint(ev.clientX, ev.clientY), box = hit && hit.closest(".quad");
+      document.querySelectorAll(".quad.drop-on").forEach(x => x !== box && x.classList.remove("drop-on"));
+      if (box) box.classList.add("drop-on");
+      c.q = box ? box.dataset.q : null;
+    },
+    onEnd(ev, c){
+      if (!c) return; c.g.remove(); el.classList.remove("dragging-row");
+      document.querySelectorAll(".quad.drop-on").forEach(x => x.classList.remove("drop-on"));
+      if (c.q && c.q !== quadOf(c.t)) { setQuad(c.t, c.q); toast(`已移到「${QUADS.find(q => q.id === c.q).t}」`); }
+    },
+    onCancel(c){ if (c) { c.g.remove(); el.classList.remove("dragging-row"); document.querySelectorAll(".quad.drop-on").forEach(x => x.classList.remove("drop-on")); } }
+  });
 }
 function quadsHTML(list, row){
   const f = ui.mf, by = { q1: [], q2: [], q3: [], q4: [] };
@@ -20,9 +51,10 @@ function quadsHTML(list, row){
   return `<div class="qaxis">
       <span>重要＝</span><select data-f="qImp"><option value="h">高優先</option><option value="hm">高＋中優先</option></select>
       <span>緊急＝已逾期或</span><select data-f="qDays">${[0, 1, 3, 7, 14].map(n => `<option value="${n}">${n === 0 ? "今天" : n + " 天內"}</option>`).join("")}</select><span>截止</span>
+      <span class="qhint">自己分類：把待辦拖到別的格子（手機長按再拖），或在編輯視窗選</span>
     </div>
     <div class="quads">${QUADS.map(q => { const ts = by[q.id].sort(sorter);
-      return `<section class="quad ${q.id}"><div class="quad-h"><b>${q.t}</b><small>${q.s}</small><span class="n">${ts.length} 項</span></div>
+      return `<section class="quad ${q.id}" data-q="${q.id}"><div class="quad-h"><b>${q.t}</b><small>${q.s}</small><span class="n">${ts.length} 項</span></div>
         ${ts.length ? `<ul class="mlist">${ts.map(row).join("")}</ul>` : `<div class="empty">沒有待辦</div>`}</section>`; }).join("")}</div>`;
 }
 function newProject(after){
@@ -91,10 +123,10 @@ function renderMaster(){
   list.forEach(t => { const g = bucketOf(t, f.sort); const last = groups[groups.length - 1]; if (last && last.k === g.k && last.t === g.t) last.items.push(t); else groups.push(Object.assign({ items: [t] }, g)); });
   const row = t => { const p = proj(t.projectId), par = t.parentId && task(t.parentId), d = dueInfo(t);
     return `<li class="mrow pr-${priOf(t)} ${t.done ? "done" : ""} ${d && !t.done ? d.cls : ""}" data-id="${t.id}" style="--c:${colorOf(t.projectId)}">
-      <input type="checkbox" data-act="check" ${t.done ? "checked" : ""} aria-label="完成">
+      <input type="checkbox" data-act="check" data-nodrag ${t.done ? "checked" : ""} aria-label="完成">
       <div class="mmain"><div class="mt1">${priBadge(t)}<span class="t" data-act="editTask">${esc(t.title)}</span></div>
-      <div class="mt2"><span class="pj"><span class="dot"></span>${esc(p ? p.name : "其他")}${par ? ` › ${esc(par.title)}` : ""}</span><span class="est">${hm(t.est || 30)}</span>${dueBadge(t)}</div></div>
-      ${t.done ? "" : `<button class="ico" data-act="sched" title="排入${shortDate(ui.date)}" aria-label="排入當日">⇥</button>`}
+      <div class="mt2"><span class="pj"><span class="dot"></span>${esc(p ? p.name : "其他")}${par ? ` › ${esc(par.title)}` : ""}</span><span class="est">${hm(t.est || 30)}</span>${dueBadge(t)}${ui.mf.layout === "quad" && t.quad ? `<button class="qman" data-nodrag data-act="unquad" title="改回自動分類">手動 ×</button>` : ""}</div></div>
+      ${t.done ? "" : `<button class="ico" data-nodrag data-act="sched" title="排入${shortDate(ui.date)}" aria-label="排入當日">⇥</button>`}
     </li>`; };
   el.innerHTML = `
     <div class="panel-head"><h2>待辦總覽</h2><span style="font-size:12.5px;color:var(--muted)">未完成 ${open.length} 項${(() => { const n = Object.values(S.archived || {}).reduce((a, b) => a + b, 0); return n && f.status !== "open" ? ` · 另有 ${n} 項較早完成的已封存` : ""; })()}</span></div>
@@ -122,6 +154,7 @@ function renderMaster(){
     </div>
     ${f.layout === "matrix" ? matrixHTML(list, row) : f.layout === "quad" ? quadsHTML(list, row) : groups.length ? `<div class="mgroups">` + groups.map(g => `<div class="mgroup">${g.t ? `<h4 class="${g.c}">${esc(g.t)} <span style="font-weight:400;color:var(--muted)">${g.items.length}</span></h4>` : ""}<ul class="mlist">${g.items.map(row).join("")}</ul></div>`).join("") + `</div>`
       : `<div class="empty">${S.tasks.length ? "沒有符合篩選的待辦" : "還沒有待辦，從上面新增第一個吧"}</div>`}`;
+  if (f.layout === "quad") el.querySelectorAll(".quad .mrow").forEach(attachQuadDrag);
   el.querySelectorAll(".mfil select, .qaxis select").forEach(sel => { if (sel.dataset.f === "proj" && !proj(f.proj)) f.proj = "all"; sel.value = String(f[sel.dataset.f]); });
 }
 $("#allPanel").addEventListener("change", e => {
@@ -149,4 +182,5 @@ $("#allPanel").addEventListener("click", e => {
   if (a.dataset.act === "check") setTaskDone(t, a.checked);
   else if (a.dataset.act === "editTask") editTask(t.id);
   else if (a.dataset.act === "sched") quickSchedule(t);
+  else if (a.dataset.act === "unquad") { setQuad(t, null); toast("改回自動分類"); }
 });

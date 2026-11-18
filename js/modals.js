@@ -191,16 +191,19 @@ function editTask(id){
       <div class="fld">預估時間${durInputs("mEst", t.est||30)}</div>
     </div>
     <div class="fld">優先度<div class="seg" id="mPri">${["h","m","l"].map(p => `<button type="button" data-p="${p}" class="${p===priOf(t)?"on":""}">${PRI[p].t}</button>`).join("")}</div></div>
+    <div class="fld">四象限<div class="seg qseg" id="mQuad">${[["", "自動"], ["q1", "重要緊急"], ["q2", "重要不急"], ["q3", "緊急不重要"], ["q4", "都不"]].map(([q, l]) => `<button type="button" data-q="${q}" class="${(t.quad || "") === q ? "on" : ""}">${l}</button>`).join("")}</div></div>
     <div class="fld">截止日期<div class="duerow"><input type="date" id="mDue" value="${t.due || ""}"><button type="button" class="btn ghost sm" id="mDueClr">清除</button></div></div>
     ${subs.length ? `<p class="fld">底下有 ${subs.length} 個小事項，刪除時會一起刪除。</p>` : ""}
     <div class="acts"><button class="btn danger" id="mDel">刪除</button><span style="display:flex;gap:8px"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mSave">儲存</button></span></div>`);
   $("#mCancel").onclick = closeModal;
   $("#mPri").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $("#mPri").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); });
   $("#mDueClr").onclick = () => { $("#mDue").value = ""; };
+  $("#mQuad").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $("#mQuad").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); });
   $("#mDel").onclick = () => withUndo(`已刪除「${t.title}」${subs.length ? `和 ${subs.length} 個小事項` : ""}`, ["main"], () => { S.tasks = S.tasks.filter(x => x.id !== id && x.parentId !== id); saveMain(); closeModal(); renderTodo(); renderTray(); });
   $("#mSave").onclick = () => {
     t.title = $("#mTitle").value.trim() || t.title; t.est = readDurOf("mEst");
     t.priority = ($("#mPri .on") || {}).dataset?.p || "m"; t.due = $("#mDue").value || null;
+    const q = ($("#mQuad .on") || {}).dataset?.q || ""; if (q) t.quad = q; else delete t.quad;
     const np = $("#mProj").value;
     if (np !== t.projectId) { t.projectId = np; subs.forEach(s => s.projectId = np); }
     saveMain(); closeModal(); renderTodo(); renderTray();
