@@ -3,7 +3,7 @@
 /* ---------- state ---------- */
 let S = { projects: [], tasks: [] };
 const days = {}, weeks = {}, archives = {};
-const logHasData = l => !!(l && (l.energy || l.work || l.ex || (l.exNote && l.exNote.trim())));
+const logHasData = l => !!(l && (l.energy || l.mood || l.work || l.ex || (l.exNote && l.exNote.trim()) || (l.moodNote && l.moodNote.trim())));
 const dayHasData = d => d && ((d.blocks && d.blocks.length) || (d.rdone && Object.keys(d.rdone).some(x => d.rdone[x])) || logHasData(d.log));
 function buildMonth(ym){
   const out = { days: {} };

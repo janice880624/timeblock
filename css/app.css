@@ -444,7 +444,7 @@ button.wc{cursor:pointer}
 .energy button.on.e5,.ebars i.e5{background:#1f63b8;color:#fff;border-color:#1a56a1}
 @media(max-width:640px){.dl-body{flex-direction:column}.dl-hint{min-width:0}}
 .body-card{margin-bottom:12px}
-.bkpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.bkpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
 .bkpis>div{background:var(--bg);border-radius:10px;padding:9px 12px}
 .bkpis small{color:var(--ink2);font-size:12px;display:block}
 .bkpis b{font-size:21px;font-variant-numeric:tabular-nums}
@@ -453,7 +453,7 @@ button.wc{cursor:pointer}
 .bkpis>div>em{display:block}
 .bgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .bgrid h4{font-size:12.5px;color:var(--ink2);margin:0 0 8px;font-weight:500}
-@media(max-width:760px){.bgrid{grid-template-columns:1fr}.bkpis{grid-template-columns:1fr 1fr 1fr;gap:6px}.bkpis b{font-size:18px}}
+@media(max-width:760px){.bgrid{grid-template-columns:1fr}.bkpis{grid-template-columns:1fr 1fr;gap:6px}.bkpis b{font-size:18px}}
 .ebars,.mbars{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;color:var(--ink2);text-align:center}
 .ecol,.mcol{display:flex;flex-direction:column;align-items:center;gap:4px}
 .ebars i{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;font-style:normal;font-weight:700;font-size:12.5px;border:1px solid}
@@ -465,4 +465,11 @@ button.wc{cursor:pointer}
 .mbars{padding-top:14px}
 .exlist{margin-top:10px}
 .exlist:empty{display:none}
+.mood{display:flex;gap:4px}
+.mood button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:18px;padding:0;line-height:1;filter:grayscale(1);opacity:.6}
+.mood button.on{filter:none;opacity:1;border-color:#e3bd4f;background:#fdf5dc}
+.mood button:hover{filter:none;opacity:1}
+#lgMoodN{width:220px}
+.ebars i.face{background:#fdf5dc;border-color:#f0d58a;font-size:16px;font-weight:400}
+.ebars i.face.m1,.ebars i.face.m2{background:#eef0f4;border-color:#d4d8e0}
 .copybox{width:100%;min-height:160px;font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:8px}

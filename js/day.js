@@ -55,10 +55,12 @@ function renderTray(){
 
 /* ---------- 今日紀錄：體力、工作時間、運動時間（自己輸入） ---------- */
 const ENERGY = ["", "很累", "有點累", "普通", "不錯", "很有精神"];
+const MOOD = ["", "很差", "不太好", "普通", "不錯", "很好"], MOOD_FACE = ["", "😫", "😕", "😐", "🙂", "😄"];
 if (ui.logOpen == null) ui.logOpen = true;
 let logTimer = null;
 function logSummary(l){
   const p = [];
+  if (l.mood) p.push(`心情 ${MOOD_FACE[l.mood]}`);
   if (l.energy) p.push(`體力 ${l.energy}`);
   if (l.work) p.push(`工作 ${hm(l.work)}`);
   if (l.ex) p.push(`運動 ${hm(l.ex)}`);
@@ -75,6 +77,10 @@ function renderDayLog(){
       <div class="dl-row"><span class="dl-k">體力</span>
         <div class="energy" role="group" aria-label="體力">${[1,2,3,4,5].map(n => `<button type="button" data-e="${n}" class="e${n} ${l.energy === n ? "on" : ""}" title="${ENERGY[n]}">${n}</button>`).join("")}</div>
         <span class="dl-hint">${l.energy ? ENERGY[l.energy] : "1 很累 → 5 很有精神"}</span></div>
+      <div class="dl-row"><span class="dl-k">心情</span>
+        <div class="mood" role="group" aria-label="心情">${[1,2,3,4,5].map(n => `<button type="button" data-m="${n}" class="m${n} ${l.mood === n ? "on" : ""}" title="${MOOD[n]}" aria-label="${MOOD[n]}">${MOOD_FACE[n]}</button>`).join("")}</div>
+        <span class="dl-hint">${l.mood ? MOOD[l.mood] : "很差 → 很好"}</span>
+        <input type="text" id="lgMoodN" maxlength="80" value="${esc(l.moodNote || "")}" placeholder="一句話記下今天（可不填）" aria-label="心情筆記"></div>
       <div class="dl-row"><span class="dl-k">工作</span>
         <input type="number" id="lgWH" min="0" max="24" inputmode="numeric" value="${l.work ? Math.floor(l.work / 60) : ""}" placeholder="0" aria-label="工作小時"><span>小時</span>
         <input type="number" id="lgWM" min="0" max="59" step="5" inputmode="numeric" value="${l.work ? l.work % 60 : ""}" placeholder="0" aria-label="工作分鐘"><span>分</span></div>
@@ -90,6 +96,7 @@ function saveDayLog(){
   if ($("#lgWH")) l.work = Math.min(n("lgWH") * 60 + Math.min(n("lgWM"), 59), 24 * 60);
   if ($("#lgEx")) l.ex = Math.min(n("lgEx"), 600);
   if ($("#lgExN")) l.exNote = $("#lgExN").value.trim();
+  if ($("#lgMoodN")) l.moodNote = $("#lgMoodN").value.trim();
   Object.keys(l).forEach(x => { if (!l[x]) delete l[x]; });
   if (Object.keys(l).length) d.log = l; else delete d.log;
   $("#dayLog .dl-sum").textContent = logSummary(l);
@@ -98,10 +105,10 @@ function saveDayLog(){
 $("#dayLog").addEventListener("input", e => { if (e.target.matches("input")) saveDayLog(); });
 $("#dayLog").addEventListener("click", e => {
   if (e.target.closest("#dlTog")) { ui.logOpen = !ui.logOpen; saveUI(); $("#dayLog").dataset.k = ""; renderDayLog(); return; }
-  const b = e.target.closest("[data-e]"); if (!b) return;
+  const b = e.target.closest("[data-e], [data-m]"); if (!b) return;
   const d = days[ui.date]; if (!d) return;
-  const v = +b.dataset.e, l = Object.assign({}, d.log);
-  if (l.energy === v) delete l.energy; else l.energy = v;               // 再按一次取消
+  const field = b.dataset.e ? "energy" : "mood", v = +(b.dataset.e || b.dataset.m), l = Object.assign({}, d.log);
+  if (l[field] === v) delete l[field]; else l[field] = v;               // 再按一次取消
   if (Object.keys(l).length) d.log = l; else delete d.log;
   saveDay(ui.date); $("#dayLog").dataset.k = ""; renderDayLog();
 });

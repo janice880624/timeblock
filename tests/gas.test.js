@@ -70,10 +70,10 @@ test("每日紀錄（體力、工作、運動）寫進「每日紀錄」工作�
   call(env, t, { action: "setMany", docs: {
     main: { projects: [], tasks: [], recurring: [] },
     "month-2026-11": { days: {
-      "2026-11-17": { blocks: [], log: { energy: 4, work: 390, ex: 60, exNote: "游泳 1500m" } },
+      "2026-11-17": { blocks: [], log: { mood: 4, moodNote: "論文有進度", energy: 4, work: 390, ex: 60, exNote: "游泳 1500m" } },
       "2026-11-18": { blocks: [{ id: "b", title: "寫", start: 540, dur: 60 }] } } } } });
   env.api.refreshViewsJob();
   const rows = env.ss.getSheetByName("每日紀錄").getDataRange().getDisplayValues();
-  assert.deepEqual(rows[1], ["2026-11-17", "4", "6.5", "60", "游泳 1500m"]);
+  assert.deepEqual(rows[1], ["2026-11-17", "4", "論文有進度", "4", "6.5", "60", "游泳 1500m"]);
   assert.equal(rows.length, 2);                       // 沒填紀錄的日子不列
 });
